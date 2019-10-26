@@ -1,0 +1,25 @@
+Package: ICPSurv
+Type: Package
+Title: Invariant Causal Prediction for Survival Data
+Version: 0.0.0.9003
+Authors@R: person("Anna", "Laksafoss", email = "vbs190@alumni.ku.dk",
+                  role = c("aut", "cre"))
+Description: The description of a package is usually long,
+    spanning multiple lines. The second and subsequent lines
+    should be indented, usually with four spaces.
+Depends: R (>= 3.1.0)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports:
+    survival (>= 2.41-3),
+    timereg (>= 1.9.2),
+    fda (>= 2.4.8),
+    dHSIC (>= 2.0)
+Suggests: 
+    ggplot2 (>= 3.1.0),
+    testthat,
+    knitr,
+    rmarkdown
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr
