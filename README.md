@@ -5,4 +5,5 @@ Invariant Causal Prediction for Survival Data
 Note that the package is not yet done !
 
 >install.packages("devtools")
+
 >devtools::install_github("Laksafoss/ICPSurv")
