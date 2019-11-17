@@ -2,49 +2,67 @@
 % Please edit documentation in R/ICP-main.R
 \name{method_obj}
 \alias{method_obj}
+\alias{print.method_obj}
 \title{Creating a Method Object for ICP}
 \usage{
 method_obj(model = "glm", method = "EnvirIrrel", ...)
+
+\method{print}{method_obj}(x, exclude = c("id", "tol", "call", "dist"), ...)
 }
 \arguments{
 \item{model}{the regression model used in \code{\link{ICP}}. The model class
 specified here must be interpretable by the generic function
-\code{\link{fit_model}}. If \code{model} is not specified it will be set
-equal to \code{glm} and \code{family = "gaussian"} will be added to the
-\strong{method object}.}
+\code{\link{fit_model}} or \code{\link{fit_nonparam_model}}. If
+\code{model} is not specified it will be set equal to \code{glm} and
+\code{family = "gaussian"} will be added to the \strong{method object}.}
 
 \item{method}{the testing metod used in \code{\link{ICP}}. The method
 specified here must be interpretable by the generic function
 \code{\link{plausible_predictor_test}}. If nothing is specified
-\code{method} is set to \code{EnvirIrrel}}
+\code{method} is set to \code{EnvirIrrel}.}
 
 \item{...}{further arguments to be passed to the
-\code{\link{plausible_predictor_test}} or \code{\link{fit_model}}
-functions.}
+  \code{\link{plausible_predictor_test}}, \code{\link{fit_model}} or
+  \code{\link{fit_nonparam_model}} functions.
+
+  If \code{method} is set to "\code{\link[=plausible_predictor_test]{CR}}"
+  then a \code{solver} can be specified. The standard solver is
+  \code{\link[=plausible_predictor_test]{QCLP}}. However, if \code{method} is
+  "\code{\link[=plausible_predictor_test]{ConstTime}}" then \code{n.sim} can
+  be set to any integer larger then 50.
+
+  If \code{model} is \code{glm} then a \code{family} should be specified
+  (see \code{\link[stats]{family}}). If a \code{family} is not specified it
+  is set to "\code{gaussian}".}
+
+\item{x}{a \code{method_obj} for printing.}
+
+\item{exclude}{variables from the \code{method_obj} \code{x} which is not to
+be included in the printout.}
 }
 \value{
-a list with all the input parameters and their values. This list has
-  class "Method_obj", \code{method} and \code{model}.
+The \code{method_obj} function returns a list with all the input
+  parameters and their values. This list has class "method_obj",
+  \code{method} and \code{model}. If \code{method} is \code{CR} then the
+  output list also has class equal to \code{solver}. If, however, the
+  \code{method} is \code{nonparam} then the output also has class
+  \code{nonparamtest}.
 }
 \description{
-THIS FUNCTION IS EXPORTED - IS THIS A GOOD IDEA WITH THIS NAME ?? Creates a
-\strong{method object} compatible with the \code{\link{ICP}} function.
+Creates a \strong{method object} within the \code{\link{ICP}} function.
 }
 \examples{
-# the standard method object is of method "EnvirIrrel"
+# The standard method object is a gaussian glm with method EnvirIrrel
 method_obj()
 
-# create a method object suitable for "confidence region" testing
-# with a poisson glm regression model
-method_obj(method = "CRellipsoid", model = "glm", family = "poisson")
-
-# create a method object suitable for "environment irrelevance" testing
-# with a cox regression model
-method_obj(method = "EnvirIrrel", model = "survival::coxph")
-# if the survival package is attached the 'survival::' part can be dropped
+# A method object for Intersecting Confidence Region analysis of linear models
+method_obj(model = "lm", method = "CR", solver = "QCLP", fullAnalysis = TRUE)
+# Here 'fullAnalysis' has been set to TRUE which will ensure that QCLP method
+# does not use rectangle approximations as a first step
 
 }
 \seealso{
 \code{\link{ICP}}, \code{\link{plausible_predictor_test}},
-  \code{\link{fit_model}} for use of the method object.
+  \code{\link{fit_model}} or \code{\link{fit_nonparam_model}}  for use of the
+  method object.
 }

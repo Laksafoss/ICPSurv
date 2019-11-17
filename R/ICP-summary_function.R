@@ -6,60 +6,73 @@
 #'
 #' @param x an object of class "ICP", usually, a result of a call to
 #'   \code{\link{ICP}}
+#' @param ... TODO
 #'
 #'
 #' @seealso The Invariant Causal Prediction function \code{\link{ICP}}.
 #'
-#' @examples
-#' n <- 100
-#' E <- rbinom(n, 3, 0.3)
-#' X <- rnorm(n, E, 1)
-#' Y <- rpois(n, X)
-#' method <- structure(list(model = "glm", family = "poisson"),
-#'                     class = "EnvirIrrel")
-#' ICP(Y, X, E, method, level = 0.05)
-#'
 #' @export
 
 # summary.ICP ==================================================================
-print.ICP <- function(x) {
-  cat("\nCall:\n", paste(deparse(x$call), sep = "\n", collapse = "\n"), sep = "")
+print.ICP <- function(x, ...) {
+  cat("\n======   Call :   =================================================\n",
+      paste(deparse(x$call), sep = "\n", collapse = "\n"), sep = "")
 
-  cat("\n")
+  cat("\n\n======   Model and Method Informaiton :   =========================")
   print(x$method)
 
-
   if (!is.null(x$level)) {
-    cat("\n\nAccepted model at level ", x$level, ":\n", sep = "")
-    print(x$accepted.model)
-    if (x$empty.accepted) {
-      cat("Note: The empty set was accepted")
+    cat("\n======   Accepted Model At Level ", x$level,
+        " :   =========================\n", sep = "")
+    if (x$accepted.model == "NO SUBSET OF PREDICTORS WAS ACCEPTED") {
+      cat(x$accepted.model, "\n")
+    } else if (x$accepted.model == "Empty") {
+      cat(deparse(x$call$Y), "~ 1\n")
+      if (x$empty.accepted) {
+        cat("(Note that the empty set was accepted)\n")
+      }
+    } else {
+      cat(deparse(x$call$Y), "~", x$accepted.model, "\n")
     }
+    #print(x$accepted.model)
+    #if (x$empty.accepted) {
+    #  cat("Note: The empty set was accepted")
+    #}
   }
 
-  cat("\n\nModels:\n", sep = "")
+  cat("\n======   Models Analysis :   ======================================\n")
+
   pval_models <- sapply(x$model.analysis$pval, function(m) {
     if (m >= 0.5) {
-      c("invariant at 0.5 ")
+      c("III")
     } else if (m >= 0.1) {
-      c("invariant at 0.1 ")
+      c("II ")
     } else if (m >= 0.05) {
-      c("invariant at 0.05")
-    } else if (m < 0.05) {
-      c("                 ")
+      c("I  ")
+    } else if (m >= 0.01) {
+      c("i  ")
+    } else if (m < 0.01) {
+      c("   ")
     }
   })
-  pval_models <- data.frame("p value" = format.pval(x$model.analysis$pval,
-                                                    digits = 3),
+  if (is.logical(x$model.analysis$pval)) {
+    nice_ps <- x$model.analysis$pval
+  } else {
+    nice_ps <- format.pval(x$model.analysis$pval,
+                           digits = 3,
+                           eps = x$smallest_possible_pval)
+  }
+  pval_models <- data.frame("p value" = nice_ps,
                             pval_models,
                             row.names = x$model.analysis$model,
                             fix.empty.names = F)
   print(pval_models)
+  cat("---\nInvariance codes:  1 ","III"," 0.5 ","II"," 0.1 ","I"," 0.05 ",
+      "i"," 0.01 ", " ", " 0\n", sep = "'")
 
-  cat("\n")
 
   if (!is.null(x$variable.analysis)) {
-    cat("\nVariables:\n", sep = "")
+    cat("\n\n======   Variables Analysis :   ===================================\n")
     pval_var <- sapply(x$variable.analysis$pval, function(v) {
       if (v <= 0.001) {
         c("***")
@@ -74,15 +87,14 @@ print.ICP <- function(x) {
       }
     })
     pval_var <- data.frame("p value" = format.pval(x$variable.analysis$pval,
-                                                   digits = 3),
+                                                   digits = 3,
+                                                   eps = x$smallest_possible_pval),
                            pval_var,
                            row.names = x$variable.analysis$variables,
                            fix.empty.names = F)
     print(pval_var)
     cat("---\nSignif. codes:  0 ","***"," 0.001 ","**"," 0.01 ","*"," 0.05 ",
-        "."," 0.1 ", " ", " 1\n", sep = "'")
-
-    cat("\n")
+        "."," 0.1 ", " ", " 1\n\n", sep = "'")
   }
 }
 

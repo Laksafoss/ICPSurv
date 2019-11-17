@@ -4,24 +4,16 @@
 \alias{print.ICP}
 \title{Printing an ICP output}
 \usage{
-\method{print}{ICP}(x)
+\method{print}{ICP}(x, ...)
 }
 \arguments{
 \item{x}{an object of class "ICP", usually, a result of a call to
 \code{\link{ICP}}}
+
+\item{...}{TODO}
 }
 \description{
 A simple print function for the \code{\link{ICP}} function.
-}
-\examples{
-n <- 100
-E <- rbinom(n, 3, 0.3)
-X <- rnorm(n, E, 1)
-Y <- rpois(n, X)
-method <- structure(list(model = "glm", family = "poisson"),
-                    class = "EnvirIrrel")
-ICP(Y, X, E, method, level = 0.05)
-
 }
 \seealso{
 The Invariant Causal Prediction function \code{\link{ICP}}.

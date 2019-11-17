@@ -4,59 +4,71 @@
 #'
 #' Creates a \strong{method object} within the \code{\link{ICP}} function.
 #'
+#' @param model the regression model used in \code{\link{ICP}}. The model class
+#'   specified here must be interpretable by the generic function
+#'   \code{\link{fit_model}} or \code{\link{fit_nonparam_model}}. If
+#'   \code{model} is not specified it will be set equal to \code{glm} and
+#'   \code{family = "gaussian"} will be added to the \strong{method object}.
 #' @param method the testing metod used in \code{\link{ICP}}. The method
 #'   specified here must be interpretable by the generic function
 #'   \code{\link{plausible_predictor_test}}. If nothing is specified
-#'   \code{method} is set to \code{EnvirIrrel}
-#' @param model the regression model used in \code{\link{ICP}}. The model class
-#'   specified here must be interpretable by the generic function
-#'   \code{\link{fit_model}}. If \code{model} is not specified it will be set
-#'   equal to \code{glm} and \code{family = "gaussian"} will be added to the
-#'   \strong{method object}.
+#'   \code{method} is set to \code{EnvirIrrel}.
 #' @param ... further arguments to be passed to the
-#'   \code{\link{plausible_predictor_test}} or \code{\link{fit_model}}
-#'   functions.
+#'   \code{\link{plausible_predictor_test}}, \code{\link{fit_model}} or
+#'   \code{\link{fit_nonparam_model}} functions.
 #'
-#' @return a list with all the input parameters and their values. This list has
-#'   class "Method_obj", \code{method} and \code{model}.
+#'   If \code{method} is set to "\code{\link[=plausible_predictor_test]{CR}}"
+#'   then a \code{solver} can be specified. The standard solver is
+#'   \code{\link[=plausible_predictor_test]{QCLP}}. However, if \code{method} is
+#'   "\code{\link[=plausible_predictor_test]{ConstTime}}" then \code{n.sim} can
+#'   be set to any integer larger then 50.
+#'
+#'   If \code{model} is \code{glm} then a \code{family} should be specified
+#'   (see \code{\link[stats]{family}}). If a \code{family} is not specified it
+#'   is set to "\code{gaussian}".
+#'
+#' @param x a \code{method_obj} for printing.
+#' @param exclude variables from the \code{method_obj} \code{x} which is not to
+#'   be included in the printout.
+#'
+#' @return The \code{method_obj} function returns a list with all the input
+#'   parameters and their values. This list has class "method_obj",
+#'   \code{method} and \code{model}. If \code{method} is \code{CR} then the
+#'   output list also has class equal to \code{solver}. If, however, the
+#'   \code{method} is \code{nonparam} then the output also has class
+#'   \code{nonparamtest}.
 #'
 #' @seealso \code{\link{ICP}}, \code{\link{plausible_predictor_test}},
-#'   \code{\link{fit_model}} for use of the method object.
+#'   \code{\link{fit_model}} or \code{\link{fit_nonparam_model}}  for use of the
+#'   method object.
 #'
 #' @examples
-#' # the standard method object is of method "EnvirIrrel"
-#' ICPSurv:::method_obj()
+#' # The standard method object is a gaussian glm with method EnvirIrrel
+#' method_obj()
 #'
-#' # create a method object suitable for "confidence region" testing
-#' # with a poisson glm regression model
-#' ICPSurv:::method_obj(method = "CRellipsoid", model = "glm", family = "poisson")
+#' # A method object for Intersecting Confidence Region analysis of linear models
+#' method_obj(model = "lm", method = "CR", solver = "QCLP", fullAnalysis = TRUE)
+#' # Here 'fullAnalysis' has been set to TRUE which will ensure that QCLP method
+#' # does not use rectangle approximations as a first step
 #'
-#' # create a method object suitable for "environment irrelevance" testing
-#' # with a proportional hazard regression model
-#' ICPSurv:::method_obj(method = "EnvirIrrel", model = "ph")
-#' # if the survival package is attached the 'survival::' part can be dropped
+#' @export
 
-# AS OF NOW THIS FUNCTION DOES NOT ALLOW FOR NEW
-# fit_model and plausible_predictor_test methods !!!!!
 method_obj <- function(model = "glm", method = "EnvirIrrel", ...) {
-  if ( ! (method %in% c("CR", "EnvirIrrel", "ConstTime"))) {
-    stop("'method' must be 'CR', 'EnvirIrrel' or 'ConstTime'") # What is the name of time test ?!?!?
-  }
-  if ( ! (model %in% c("lm", "glm", "ph", "ah"))) {
-    stop("'model' must be 'lm', 'glm', 'ph' or 'ah'")
-  }
 
-  mf <- as.list(match.call(expand.dots = T))[-1]
-  if (missing(method)) {
+  mf <- c(as.list(environment()), list(...))
+
+  if (is.null(mf$method)) {
     mf <- c(method = "EnvirIrrel", mf)
   }
-  if (missing(model)) {
-    if (mf$method == "ConstTime") {
-      mf <- c(model = "ah", mf)
+
+  if (is.null(mf$model)) {
+    if (mf$method == "nonparam") {
+      mf <- c(model = "hazard", mf)
     } else {
       mf <- c(model = "glm", mf)
     }
   }
+
   if (mf$model == "glm") {
     if(is.null(mf$family)) {
       mf$family <- "gaussian"
@@ -64,89 +76,142 @@ method_obj <- function(model = "glm", method = "EnvirIrrel", ...) {
     if (is.call(mf$family)) {
       mf$family <- eval(mf$family)
     }
+  } else if (mf$model == "hazard") {
+    if (is.null(mf$link)) {
+      if (!is.null(mf$dist$name)) {
+        mf$link <- mf$dist$name
+      } else {
+        mf$link <- "proportional"
+      }
+    }
+    if (is.null(mf$dist)) {
+      if (mf$link %in% c("proportional", "log")) {
+        mf$dist <- survival::survreg.distributions$exponential
+      } else if (mf$link %in% c("additive", "identity")) {
+        mf$dist <- survival::survreg.distributions$exponential
+        mf$dist$trans <- mf$dist$itrans <- function(y) y
+        mf$dist$dtrans <- function(y) rep(1, length(y))
+      } else if (mf$dist$dist != "extreme"){
+        stop("The basic parent distribution - 'dist$dist' - must be ",
+             "'extreme' for 'hazard' models")
+      } else {
+        stop("Either 'link' or 'dist' must be specified for 'hazard' models")
+      }
+    }
   }
 
-  if (mf$method == "ConstTime") {
+  if (mf$method == "nonparam") {
     if (mf$model == "glm") {
-      stop("A time test for glm is not avalible in this package")
+      stop("A 'nonparamtest' for glm is not yet avalible in this package")
     }
-    if (is.null(mf$TimeTest)) {
-      mf$TimeTest <- "both"
+    if (is.null(mf$nonparamtest)) {
+      mf$nonparamtest <- "both"
     }
-    if ( ! (mf$TimeTest %in% c("sup", "int", "both"))) {
-      stop("'TimeTest' must be 'sup', 'int' or 'both'")
+    if (is.null(mf$n.sim)) {
+      mf$n.sim <- 50
+    } else if (mf$n.sim < 50) {
+      stop("A 'nonparamtest' with n.sim less then 50 not yet implemented")
     }
-  }
-
-  if (mf$method == "CR") {
+    if ( ! (mf$nonparamtest %in% c("sup", "int", "both"))) {
+      stop("'nonparamtest' must be 'sup', 'int' or 'both'")
+    }
+    class(mf) <- c("method_obj", method, model, mf$nonparamtest)
+  } else if (mf$method == "CR") {
     if (is.null(mf$solver)) {
       mf$solver <- "QCLP"
     }
-    if ( ! (mf$solver %in% c("QCLP", "pairwise", "marginal"))) {
-      stop("The confidence region solver 'solver' must be 'QCLP', 'Pairwise' or 'Marginal'")
+    if (is.null(mf$splits)) {
+      mf$splits <- "all"
     }
-    if (mf$solver %in% c("pairwise")) {
-      if (is.null(mf$splits)) {
-        mf$splits <- "LOO"
-      }
-      if ( ! (mf$splits %in% c("LOO", "all"))) {
-        stop("The pairwise confidence region solve must be either 'LOO' or 'all'")
-      }
+    if ( ! (mf$splits %in% c("LOO", "all"))) {
+      stop("The pairwise confidence region solve must be either 'LOO' or 'all'")
     }
     class(mf) <- c("method_obj", method, model, mf$solver)
   } else {
     class(mf) <- c("method_obj", method, model)
   }
+  mf$call <- match.call()
   return(mf)
 }
 
 
+#' @rdname method_obj
+#' @export
+print.method_obj <- function(x, exclude = c("id", "tol", "call", "dist"), ...) {
 
-print.method_obj <- function(x) {
-  cat("\nMethod Object:\n")
-
-  cat("\n---\n")
-  cat("Statistical Model: ")
-  if (x$model == "ph") {
-    cat("proportional hazard model")
-  } else if (x$model == "ad") {
-    cat("additive hazard model")
-  } else if (x$model == "glm") {
-    cat("generalized linear model")
-  } else if (x$model == "lm") {
-    cat("linear model")
-  } else {cat(x$model)}
-  if(!is.null(x$family)) {
-    cat("\nFamily:             ")
-    if (!is.character(x$family)) {
-      cat(x$family$family, "(link = '", x$family$link, "')")
+  # Make all variable names nice and put in correct order
+  nam <- names(x)
+  nam <- nam[! nam %in% exclude]
+  order <- c("model", "family", "link", "dist",
+             "method", "solver", "nonparamtest", "splits", "n.sim",
+             "Bonferroni", "FullAnalysis", "level")
+  sort <- match(order, nam, nomatch = 0)
+  notsorted <- seq_along(nam)[-sort]
+  nam <- nam[c(sort, notsorted)]
+  nam <- unname(sapply(nam, function(x) {
+    if (x == "n.sim") {
+      return("n.sim: ")
     } else {
-      cat(x$family)
+      substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+      return(paste0(x, ": "))
     }
+  }))
+  w <- x[c(sort, notsorted)]
+
+  # Make all variable values nice and printable
+  w$model <- switch(
+    w$model,
+    ph = "Proportional Hazard Model",
+    ah = "Additive hazard Model",
+    glm = "Generalized Linear Model",
+    lm = "Linear Model",
+    hazard = "Hazard Model",
+    w$model)
+  w$method <- switch(
+    w$method,
+    "EnvirIrrel" = "Environment Irrelevance Test",
+    "CR" = "Intersecting Confidence Regions Test",
+    "nonparam" = "Non-parametric Test",
+    w$method)
+  if (!is.null(w$splits)) {
+    w$splits <- switch(
+      w$splits,
+      "LOO" = "Leave One Out CR Constructor",
+      "all" = "CR For All Environments",
+      w$splits)
   }
-  cat("\n---\n")
-  cat("Testing Method:     ")
-  if (x$method == "CR") {
-    cat("Intersecting Confidence Regions (CR)")
-    cat("\nOverlap Solver:    ", x$solver)
-    if(!is.null(x$split)) {
-      cat("\nSplits:             ")
-      if (x$split == "LOO") {
-        cat("Leave One Out")
+  if (!is.null(w$nonparamtest)) {
+    w$nonparamtest <- switch(
+      w$nonparamtest,
+      "sup" = "Kolmogorov-Smirnov Test",
+      "int" = "Cramer-von Mises Test",
+      "both" = "Both Kolmogorov-Smirnov and Cramer-von Mises Tests",
+      w$nonparamtest)
+  }
+
+  # Ensure everything is character
+  if(!is.null(w$dist)) {
+    w$dist <- ifelse(is.character(w$dist), w$dist, w$dist$name)
+  }
+
+  w <- lapply(seq_along(w), function(i) {
+    if (is.character(w[[i]])) {
+      return(w[[i]])
+    } else {
+      index <- which(names(x$call) == names(w)[i])
+      if (length(index) == 1) {
+        return(deparse(x$call[[index]]))
       } else {
-        cat("all splits")
+        return(deparse(w[[i]])[1])
       }
     }
-  } else if (x$method == "EnvirIrrel") {
-    cat("Environment Irrelevance (EnvirIrrel)")
-  } else if (x$method == "ConstTime") {
-    cat("Constant Regression Effect Over Time (ConstTime)")
-    cat("\nTime Test:         ", x$TimeTest)
-    if (x$TimeTest == "both") {
-      cat(" (sup and int)")
-    }
-  }
-  cat("\n---")
+  })
+
+  # print
+  dd <- data.frame(unlist(w), row.names = nam, fix.empty.names = FALSE)
+  print(dd, right = FALSE)
+
+  invisible(x)
 }
 
 
@@ -155,9 +220,9 @@ print.method_obj <- function(x) {
 #' A method for finding causal predictors of a target variable.
 #'
 #' The \code{ICP} function implements tooles for the \emph{Invariant Causal
-#' Predictor} methodology described when the target variable is either described
-#' by a glm, additive hazard model or multiplicative hazard model. As such the
-#' target variable \code{Y} is allowed to be both a vector and a survival object.
+#' Predictor} methodology when the target variable may be described by a lm,
+#' glm or hazard model. To allow for survival type models the target variable
+#' \code{Y} is allowed to be both a vector and a survival object.
 #'
 #' The \code{ICP} function is essentially a wrapper function for the
 #' \code{\link{plausible_predictor_test}} which tests the central null
@@ -169,58 +234,71 @@ print.method_obj <- function(x) {
 #' we formulate an analog invariance statement for all time points \eqn{t} and
 #' \eqn{s}.
 #'
-#' In the \code{ICPSurv} package 3 standard methods for the generic function
+#' In the \code{ICPSurv} package three standard methods for the generic function
 #' \code{\link{plausible_predictor_test}} has been implemented for testing the
-#' null hypothesis above. For further discussion on how to implement new testing
-#' methods for the above null hypothesis see
-#' \code{\link{plausible_predictor_test}}.
-#'
-#' To make the \code{ICP} function work correctly with the
-#' \code{\link{plausible_predictor_test}} function a \strong{method object}
-#' \code{method} must be specfied using the \code{\link{method_obj}} function.
-#' The class of the \strong{method object} must correspond to an implemeted
-#' method of the generic function \code{\link{plausible_predictor_test}}.
+#' null hypothesis above. These are the
+#' \code{\link[=plausible_predictor_test]{EnvirIrrel}},
+#' \code{\link[=plausible_predictor_test]{CR}} and
+#' \code{\link[=plausible_predictor_test]{nonparam}} method. For further
+#' discussion on how to implement new testing methods for the above null
+#' hypothesis see \code{\link{plausible_predictor_test}}.
 #'
 #'
 #' @param Y an object describing the response variable. \code{Y} will be passed
 #'   to the \code{\link{plausible_predictor_test}} for analyzing.
 #' @param X a matrix, data.frame or vector describing the covariates
 #' @param E a vector, matrix or data frame describing the environments.
-#' @param method a \strong{method object} greated by the
-#'   \code{\link{method_obj}} function. A method object is a list describing the
-#'   regression model, and the list has class equal to the name of the method
-#'   that should be invoked by the generic function
-#'   \code{\link{plausible_predictor_test}}. The \strong{method object} list
-#'   should always contain an entry named \code{model}, which equals a \code{R}
-#'   function (e.g. "glm", "coxph").
+#' @param model a character which must correspont to a \code{\link{fit_model}}
+#'   or \code{\link{fit_nonparam_model}} method. In this package the model types
+#'   implemented are \code{\link[=fit_model.lm]{lm}},
+#'   \code{\link[=fit_model.glm]{glm}}, \code{\link[=fit_model.ph]{ph}},
+#'   \code{\link[=fit_model.ah]{ah} and \code{\link[=fit_model.hazard]{hazard}},
+#'   but the user may specify new methods for the generic functions
+#'   \code{\link{fit_model}} or \code{\link{fit_nonparam_model}} for more
+#'   \code{model} options.
 #'
+#'   If \code{model} is equal to \code{glm} then a \code{family} must be
+#'   specified in \code{...}. For more details on valid family inputs see
+#'   \code{\ink[stats]{family}}. If \code{family} is not specified, then it is
+#'   set to "gaussian". Note that (\code{model = glm, \code{family = "gaussian"}})
+#'   is synonymous with (\code{model = lm}).
+#'
+#'   Is \code{model} is equal to \code{hazard} a \code{link} or \code{dist} must
+#'   be specified in \code{...}. A user specified \code{dist} allowes for the
+#'   most flexibility. The format of a \code{dist} list is descibed in
+#'   \code{\link[survival]{survreg.distributions}}. Possible \code{link} values
+#'   include \code{log}, \code{identity}, \code{proportional} and \code{additive}.
+#'   Howbeit, \code{link} equal to \code{log} or \code{proportional} is
+#'   synonymous with \code{model} equal to \code{ph}, and \code{link} equal to
+#'   \code{identity} or \code{additive} is synonymous with \code{model} equal
+#'   to \code{ah}.
+#' @param method a character which must correspond to a
+#'   \code{\link{plausible_predictor_test}} method. In this package the methods
+#'   \code{\link[=plausible_predictor_test.EnvirIrrel]{EnvirIrrel}},
+#'   \code{\link[=plausible_predictor_test.CR]{CR}} and
+#'   \code{\link[=plausible_predictor_test.nonparam]{nonparam}} are already
+#'   defined. If the user defines a new S3 method for the
+#'   \code{\link{plausible_predictor_test}} then this new method becomes a valid
+#'   input for \code{method} here. For more details on how to implement your own
+#'   method for use in the \code{ICP} function see
+#'   \code{\link{plausible_predictor_test}}.
 #' @param level numerical value between 0 and 1 denoting the significance level
-#'   used when testing. If not specified the algirithm will not return an
-#'   estimated set of identified causal predictors at level \code{level}.
-#'
-#' @param fullAnalysis If \code{FALSE} those
-#'   \code{\link{plausible_predictor_test}} that find p-values based on
-#'   iterative test only test the hypothesis at the specified \code{level}.
-#'   Hence \code{level} must be specified if \code{fullAnalysis} is set to
-#'   \code{FALSE}.
-#'
-#'   The inbuilt \code{\link{plausible_predictor_test}} for the
-#'   \code{CRrectangle} and \code{CRellipsoid} method are both example of tests,
-#'   that find the p-values using iterative tests. So if one of these methods is
-#'   used, setting \code{fullAnalysis} to \code{FALSE} will save computational
-#'   time. This does however also mean that it is not possible to estimate the
-#'   p-values of the individual variables.
-#'
+#'   used when testing. If not specified the algirithm will only calculate the
+#'   p-values of the null hypothesis \eqn{H_{0,S}} and draw no conclusions based
+#'   on these values.
 #' @param maxNoVariables The maximal number of variables in the tested subsets
-#'   of \code{X}. A smaller number saves computational time.
-#'
-#' @param stopIfEmpty If \code{TRUE} the procedure will stop if the null
-#'   hypothesis for the empty set has been accepted. Setting to \code{TRUE} will
-#'   save computational time in these cases, but means that an analysis of other
-#'   subsets of \code{X} is lost.
-#'
+#'   of \code{X}. A smaller number saves computational time, but also
+#'   corresponds to assuming that the target variable \code{Y} has at most
+#'   \code{maxNoVariables} identifiable predictors.
+#' @param fullAnalysis if \code{FALSE} different computations time saving
+#'   options will be enabled and as a result many methods will not be able to
+#'   return proper p-values of the null hypothesis \eqn{H_{0,S}}. In turn this
+#'   means that the method will no longer be able to estime the significanse of
+#'   a single variable. \code{fullAnalysis = FALSE} will result in different
+#'   behavior for different \code{methods}, so for a more detailed discussion of
+#'   concrete effects see the help page for the chooosen \code{method}.
 #' @param ... additional arguments carried to the
-#'   \code{\link{plausibel_predictor_test}}.
+#'   \code{\link{plausible_predictor_test}}.
 #'
 #' @return Returns an object of class \code{ICP}. Such an object will at least
 #'   contain the following
@@ -255,85 +333,50 @@ print.method_obj <- function(x) {
 #'   function.
 #'
 #' @references
-#'   Peters, Jonas, Peter Bühlmann, and Nicolai Meinshausen. \emph{Causal
+#'   Jonas Peters, Peter Bühlmann, and Nicolai Meinshausen. \emph{Causal
 #'   inference by using invariant prediction: identification and confidence
 #'   intervals.} Journal of the Royal Statistical Society: Series B (Statistical
 #'   Methodology) 78.5 (2016): 947-1012.
 #'
 #' @examples
 #' # ===========================================================================
-#' # A simple example with normal distributions and no time dependent variables
-#' # First we simulate data.
-#' G <- matrix(c(0,1,1,1,0,0,0,0,0,0.4,0,0,0,0,0.4,0,0,0,0,0,0,0,0,0,0),
-#'             ncol = 5, byrow = T,
-#'             dimnames = list(c("E","X1","X2","X3","Y"), c("E","X1","X2","X3","Y")))
-#' sim <- c("sample(c(0,5,10),N,replace=T)", rep("rnorm(N,BETA,1)",4))
-#' out <- list(Y = 5, X = 2:4, E = 1)
-#' SIM <- sim_from_adj(G, 100, sim, out)
-#' # note that Y has parents X1 and X2
-#'
-#' # create list describing regression model
-#' method <- list(model = "glm", family = "gaussian")
-#'
-#' # analyze using the "Environment Irrelevance test"
-#' class(method) <- "EnvirIrrel"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#'
-#' # analyze using the old marginal confidence interval test
-#' class(method) <- "CRrectangle"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#'
-#' # analyze using the new "Confidence Region" test with correct ellipsoid CR's
-#' class(method) <- "CRellipsoid"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#' # ---------------------------------------------------------------------------
-#'
-#'
+#' # An example with normal distributions
+#' n <- 500
+#' E <- sample(5L, n, replace = TRUE)
+#' X <- rnorm(n, E, 1)
+#' Y <- rnorm(n, X, 1)
+#' ICP(Y, X, E) # Environment Irrelevance Test
+#' ICP(Y, X, E, method = "CR") # Confidence Region Test
 #'
 #' # ===========================================================================
-#' # A simple example with poisson distributions and no time dependent variables
-#' # First we simulate data.
-#' G <- matrix(c(0,1,1,1,0,0,0,0,0,0.4,0,0,0,0,0.4,0,0,0,0,0,0,0,0,0,0),
-#'             ncol = 5, byrow = T,
-#'             dimnames = list(c("E","X1","X2","X3","Y"), c("E","X1","X2","X3","Y")))
-#' sim <- c("sample(c(0,5,10),N,replace=T)", rep("rnorm(N,BETA,1)",3), "rpois(N,exp(BETA))")
-#' out <- list(Y = 5, X = 2:4, E = 1)
-#' SIM <- sim_from_adj(G, 100, sim, out)
-#' # note that Y has parents X1 and X2
+#' # An example with a poisson distribution
+#' Y <- rpois(n, exp(X))
+#' # Environment Irrelevance Test
+#' ICP(Y, X, E, model = "glm", family = "poisson")
+#' # Intersecting Confidence Region Test
+#' ICP(Y, X, E, model = "glm", family = "poisson", method = "CR")
 #'
-#' # create list describing regression model
-#' method <- list(model = "glm", family = "poisson")
-#'
-#' # analyze using the "Environment Irrelevance test"
-#' class(method) <- "EnvirIrrel"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#'
-#' # analyze using the old marginal confidence interval test
-#' class(model) <- "CRrectangle"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#'
-#' # analyze using the new "Confidence Region" test with correct ellipsoid CR's
-#' class(method) <- "CRellipsoid"
-#' ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-#' # ---------------------------------------------------------------------------
-
-#'
-#'
+#' # ===========================================================================
+#' # An example with right censored survival times
+#' Y <- rexp(n, exp(- 1.5 *X))
+#' C <- rexp(n, exp(- 2.0 * X))
+#' time <- pmin(Y, C)
+#' status <- time == Y
+#' # Environment Irrelevance Test
+#' ICP(survival::Surv(time, status), X, E, model = "ph")
+#' # Intersecting Confidence Regions Test
+#' ICP(survival::Surv(time, status), X, E, model = "ph", method = "CR")
+#' # Non-parametric Constant Effect Over Time Test
+#' ICP(survival::Surv(time, status), X, E, model = "ph", method = "nonparam")
 #'
 #' @export
 
 # ICP ==========================================================================
+ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
+                level = 0.05, maxNoVariables = 8, fullAnalysis = TRUE, ...) {
 
-ICP <- function(Y, X, E = NULL,
-                method = structure(list(model = "glm", family = "gaussian"),
-                                  class = "EnvirIrrel"),
-                level = NULL, fullAnalysis = T,
-                maxNoVariables = 8, stopIfEmpty = FALSE, ...) {
-#ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
-#                level = 0.05, fullAnalysis = T,
-#                maxNoVariables = 8, ...) {
-#
-#  method <- method_obj(method = method, model = model, ...)
+
+  method <- method_obj(model = model, method = method, ...)
 
   if (!is.numeric(maxNoVariables)) {
     stop("'maxNoVariables' must be an integer >= 1")
@@ -356,7 +399,10 @@ ICP <- function(Y, X, E = NULL,
     }
   }
   if (is.vector(X)) {
-    X <- data.frame(X)
+    X <- tryCatch(data.frame(X), error = function(x) {0})
+    if (identical(X, 0)) {
+      stop("When 'X' is a vector it must be coercible to data.frame.")
+    }
   }
   if (is.matrix(X)) {
     X <- data.frame(X)
@@ -365,7 +411,22 @@ ICP <- function(Y, X, E = NULL,
     stop("'X' must be a vector, matrix or data frame")
   }
   if (!is.null(E)) {
-    E <- interaction(E, drop = T, sep = ":")
+
+    if (is.matrix(E)) {
+      E <- data.frame(E)
+    }
+    if (is.data.frame(E)) {
+      E <- interaction(E, drop = T, sep = ":")
+    }
+    if (is.list(E)) {
+      stop("'E' must be vector, matrix, data frame or factor")
+    }
+    if (is.vector(E)) {
+      E <- as.factor(E)
+    }
+    if (! is.factor(E)) {
+      stop("'E' must be vector, matrix, data frame or factor")
+    }
     if (length(E) != nrow(X)) {
       stop("'E' and 'X' must have same length / number of rows")
     }
@@ -386,47 +447,49 @@ ICP <- function(Y, X, E = NULL,
   max_no_variables <- min(p, maxNoVariables)
   test_list <- unlist(lapply(seq_len(max_no_variables),
                              function(y) {
-                               combn(seq_len(p),
-                                     y,
-                                     simplify = FALSE)}),
+                               utils::combn(seq_len(p),
+                                            y,
+                                            simplify = FALSE)}),
                       recursive = FALSE)
   test_list <- unlist(list(0, test_list), recursive = FALSE)
 
   # LOOP THROUGH TEST_LIST -----------------------------------------------------
 
-  # initialize counter and result matrix
+  # initialize
+  smallest_possible_pvalue <- .Machine$double.eps
   res_model <- data.frame(models = character(), pval = numeric())
-  s <- 1
+  s <- 1L
 
   # loop through sets
-  while (s < length(test_list) + 1) {
+  while (s <= length(test_list)) {
     # Find current subset and analyze
     X_sub <- X[ , test_list[[s]], drop = F]
-    pval <- plausible_predictor_test(method = method, Y = Y, X = X_sub, E = E,
-                                     level = level, fullAnalysis = fullAnalysis,
-                                     ...)
-    nam <- if (s == 1) {"Empty"} else {paste0(colnames(X_sub), collapse = " + ")}
+    pval <- plausible_predictor_test(method = method,
+                                     Y = Y, X = X_sub, E = E,
+                                     level = level,
+                                     fullAnalysis = fullAnalysis, ...)
+    nam <- ifelse(s == 1L, "Empty", paste0(colnames(X_sub), collapse = " + "))
     res_model <- rbind(res_model, data.frame(model = nam, pval = pval))
 
     # Clean up test_list if posible
-    if (pval >= ifelse(is.null(level), 1, level)) {
-      if (nrow(res_model) == 1 && stopIfEmpty) {
-        test_list <- test_list[[1]]
-      } else {
-        remove <- sapply(seq_along(test_list), function(i) {
-          if (i <= s) {
-            F
-          } else {
-            all(test_list[[s]] %in% test_list[[i]])
-          }
-        })
-        test_list <- test_list[!remove]
+    if (! fullAnalysis) {
+      if (pval >= ifelse(is.null(level), 1, level)) {
+        if (nrow(res_model) == 1) {
+          test_list <- test_list[[1]]
+        } else {
+          remove <- sapply(seq_along(test_list), function(i) {
+            if (i <= s) {
+              F
+            } else {
+              all(test_list[[s]] %in% test_list[[i]])
+            }
+          })
+          test_list <- test_list[!remove]
+        }
       }
     }
-    s <- s + 1
+    s <- s + 1L
   }
-
-
 
   # SUMMARIZE RESULTS ----------------------------------------------------------
   call <- match.call()
@@ -434,12 +497,12 @@ ICP <- function(Y, X, E = NULL,
     list(
       call = call,
       level = level,
+      smallest_possible_pvalue = smallest_possible_pvalue,
       model.analysis = res_model,
       method = method
       ),
     class = "ICP"
   )
-
 
   # FIND ACCEPTED MODEL & VARIABLE 'P-VALUES' ------------------------------------
   if (!is.null(level)) {
@@ -463,7 +526,7 @@ ICP <- function(Y, X, E = NULL,
 
     # finde variable 'p-values'
     if (fullAnalysis) {
-      if (res_acc == "Empty") { # TODO or is it !any(res_model$pval[-1] >= level)
+      if (!any(res_model$pval >= level)) { # TODO or is it res_acc == "Empty"
         pval_var <- rep(1, length.out = ncol(X))
       } else {
         # TODO test correctness of this code !!!!!

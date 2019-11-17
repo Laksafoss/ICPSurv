@@ -2,27 +2,30 @@
 % Please edit documentation in R/ICP-plausible_predictor_test.R
 \name{plausible_predictor_test}
 \alias{plausible_predictor_test}
+\alias{plausible_predictor_test.default}
+\alias{plausible_predictor_test.nonparam}
 \alias{plausible_predictor_test.EnvirIrrel}
 \alias{plausible_predictor_test.CR}
-\alias{plausible_predictor_test.CRrectangle}
-\alias{plausible_predictor_test.CRellipsoid}
-\alias{plausible_predictor_test.ConstRegParam}
 \title{Test for plausible predictors}
 \usage{
 plausible_predictor_test(method, Y, X, ...)
 
+\method{plausible_predictor_test}{default}(method, Y, X, ...)
+
+\method{plausible_predictor_test}{nonparam}(method, Y, X, level, Bonferroni = TRUE, ...)
+
 \method{plausible_predictor_test}{EnvirIrrel}(method, Y, X, E, ...)
 
-\method{plausible_predictor_test}{CR}(method, Y, X, E, level, fullAnalysis,
-  ...)
-
-\method{plausible_predictor_test}{CRrectangle}(method, Y, X, E, level,
-  fullAnalysis, ...)
-
-\method{plausible_predictor_test}{CRellipsoid}(method, Y, X, E, level,
-  fullAnalysis, ...)
-
-\method{plausible_predictor_test}{ConstRegParam}(method, Y, X, level, ...)
+\method{plausible_predictor_test}{CR}(
+  method,
+  Y,
+  X,
+  E,
+  level,
+  fullAnalysis,
+  Bonferroni = TRUE,
+  ...
+)
 }
 \arguments{
 \item{method}{a method object describing the model class to use in the
@@ -31,24 +34,25 @@ fitting procedure and the testing method. When used in the
 \code{\link{ICP}} function.}
 
 \item{Y}{a vector or \code{\link[survival]{Surv}} object describing the target variable. The \code{Y}
-will be passed to the \code{\link{model_fit}} function for fitting, and it
+will be passed to the \code{\link{fit_model}} function for fitting, and it
 is therefor important that the class of \code{Y} is understood by the
-regression method used in \code{\link{model_fit}}. So if \code{method}
+regression method used in \code{\link{fit_model}}. So if \code{method}
 specifies that a cox regression is to be used, then \code{Y} must be a
 \code{\link[survival]{Surv}} object.}
 
 \item{X}{a matrix, vector or data frame describing the covariates. WRITE
 ABOUT \code{X} WHEN TESTING THE EMPTY SET !!!!}
 
-\item{E}{a vector describing the environmants}
+\item{...}{TODO}
 
 \item{level}{the alpha level of testing, but it is only relevant if the
 method is iterative \emph{and} \code{fullAnalysis} is \code{FALSE}.}
 
-\item{fullAnalysis}{only has an effect if the method used is iterative. If
-\code{TRUE} the method will go throught the iterative steps to determin a
-p-vlaue, however if \code{FALSE} the method will only be tested at the
-specified alpha level \code{level}.}
+\item{Bonferroni}{TODO}
+
+\item{E}{a vector describing the environmants}
+
+\item{fullAnalysis}{TODO !!!!}
 }
 \value{
 Returns a p-value, i.e. a number between 0 and 1, to be used in the
@@ -82,23 +86,6 @@ p value, that is a number between 0 and 1.
 The \code{plausible_predictor_test}
 
 PERHAPS A DESCRIPTION OF THE TACHNICALITIES OF \code{method} AND \code{Y} ?!
-}
-\examples{
-# create some data
-n <- 100
-E <- rbinom(n, 3, 0.3)
-X <- rnorm(n, E, 1)
-Y <- rpois(n, exp(X))
-E <- as.factor(E)
-
-# create the method object
-method <- structure(list(model = "glm", family = "poisson"),
-                    class = "EnvirIrrel")
-
-# test hypothesis using 'EnvirIrrel' method
-plausible_predictor_test(method, Y, X, E)
-
-
 }
 \seealso{
 \code{\link{ICP}} for the full wrapper function.

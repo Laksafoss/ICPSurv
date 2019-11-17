@@ -1,4 +1,3 @@
-
 #' Internal regression functions
 #'
 #' The \code{fit_model} function is a generic function meant for internal use in
@@ -14,64 +13,42 @@
 #'   target variable.
 #' @param X a matrix, vector or data frame describing the covariates. WRITE
 #'   ABOUT \code{X} WHEN TESTING THE EMPTY SET !!!!
-#' @param const can be used in the \code{coxph} and
-#'   \code{aalen} methods and must be logical. If \code{const = FALSE} then the
-#'   survival model fitted will have time varying regression effects.
-#'   Furthermore the return object is changed.
+#' @param id TODO
 #' @param ... additional arguments. At the moment only the additional argument
 #'   \code{const} is allowed.
 #'
 #' @return Depending on \code{method} the \code{fit_model} function returns
-#'   different lists. If \code{method$method != 'ConstTime'} the output list must
+#'   different lists. If \code{method$method} \eqn{!=} "\code{ConstTime}" the output list must
 #'   contain the following
+#'   \describe{
+#'     \item{coefficients}{the estimated regression coefficients.}
+#'     \item{covariance}{the estimated covariance matrix.}
+#'     \item{deviance}{the deviance, i.e. \eqn{- 2 * LogLik}, where \eqn{LogLik}
+#'       is the log likelihood evaluated in the reported estimators.}
+#'     \item{df}{degrees of freedom}
+#'   }
 #'
-#'   \item{coefficients}{the estimated regression coefficients.}
-#'   \item{covariance}{the estimated covariance matrix.}
-#'   \item{deviance}{the deviance, i.e. \eqn{- 2 * LogLik}, where \eqn{LogLik}
-#'     is the log likelihood evaluated in the reported estimators.}
-#'   \item{null.deviance}{the deviance of the null hypothesis, i.e.
-#'     \eqn{- 2 * LogLik}, where \eqn{LogLik} is the log likelihood of the null
-#'     model  - the model with predictor effect zero.}
-#'   \item{df}{degrees of freedom}
+#'   If \code{method} has class "\code{ConstTime}" then the output list contains
+#'   ANNA: DO WE ALWAYS RETURN ALL 4 ??? If we don't need pvals then we may set
+#'   n.sim = 0
 #'
-#'   If \code{method$method == 'ConstTime'} then the output list contains
-#'   ANNA: DO WE ALWAYS RETURN ALL 4 ??? If we don't need pvals then we may set n.sim = 0
-#'
-#'   \item{cum} cumulative timevarying regression coefficients estimated within
-#'     the timeinterval with observations.
-#'   \item{var.cum} the martingale based pointwise variance estimated for
-#'     cumulatives.
-#'   \item{pval.testBeqC} Kolmogorov-Smirnov test p-values based on resampling.
-#'   \item{pval.testBeqC.is} Carmer von Mises test p-values based on resampling.
-#'
+#'   \describe{
+#'     \item{cum}{cumulative timevarying regression coefficients estimated within
+#'       the timeinterval with observations.}
+#'     \item{var.cum}{rhe martingale based pointwise variance estimated for
+#'       cumulatives.}
+#'     \item{pval.testBeqC}{Kolmogorov-Smirnov test p-values based on resampling.}
+#'     \item{pval.testBeqC.is}{Carmer von Mises test p-values based on resampling.}
+#'    }
 #'
 #' @seealso \code{\link{ICP}}, \code{\link{plausible_predictor_test}} for the
 #'   full wrapper functions.
-#'
-#' @examples
-#' # create some data, here we simulate from a proportional hazard model
-#' X <- rnorm(100)
-#' Y <- (-runif(100)/(0.0001 * exp(X)))^(1/2.7)
-#' Y <- survival::Surv(Y)
-#'
-#' # specify method object, we can fit proportional hazard models with coxph
-#' method <- method_obj(method = "EnvirIrrel", model = "coxph")
-#' # one can note that the 'method' part of the method object
-#' # is not acually used in the fitter function;
-#' # it is however used by the wrapper function 'plausible_predictor_test'
-#'
-#' # fit
-#' fit_model(method, Y, X)
-#'
-#'
-#'
 
 fit_model <- function(method, Y, X, ...) {
   UseMethod("fit_model", method)
 }
 
 #' @rdname fit_model
-
 fit_model.default <- function(method, Y, X, ...) {
   warning(method$model,
           "is not a recocnised statistical model in the ICPSurv framework",
@@ -82,207 +59,214 @@ fit_model.default <- function(method, Y, X, ...) {
   return(1)
 }
 
-
 #' @rdname fit_model
-
 fit_model.lm <- function(method, Y, X, ...) {
-  fit <- stats::lm(Y ~ ., data = data.frame(Y,X), family = method$family)
+  fit <- stats::lm(Y ~ ., data = data.frame(Y,X))
   return(list("coefficients" = fit$coefficients,
-              "covariance" = vcov(fit)))
+              "covariance" = stats::vcov(fit),
+              "deviance" = stats::deviance(fit),
+              "df" = fit$df.residual,
+              "scale" = stats::deviance(fit) / fit$df.residual))
 }
 
-
 #' @rdname fit_model
-
 fit_model.glm <- function(method, Y, X, ...) {
   if (is.null(method$family)) {
     stop("For model = 'glm' there must be specified a family in the method object")
   }
   fit <- stats::glm(Y ~ ., data = data.frame(Y,X), family = method$family)
   return(list("coefficients" = fit$coefficients,
-              "covariance" = vcov(fit)))
+              "covariance" = stats::vcov(fit),
+              "deviance" = fit$deviance,
+              "df" = fit$df.residual,
+              "scale" = summary(fit, dispersion = method$dispersion)$dispersion))
 }
-
 
 #' @rdname  fit_model
-
-fit_model.ph <- function(method, Y, X, id,  ...) {
+fit_model.ph <- function(method, Y, X, ...) {
   if (! survival::is.Surv(Y)) {
     Y <- survival::Surv(Y)
   }
-  if (method$method == "ConstTime") {
-    # TODO: IS THIS CORRECT ?!?
-    fit <- timereg::timecox(Y ~ ., data = data.frame(X), id = id, n.sim = 0)
-    return(list(
-      "cum" = fit$cum,
-      "cum.var" = fit$var.cum
-    ))
+  if (length(X) == 0) {
+    fit <- survival::survreg(Y ~ 1, dist = "exponential")
   } else {
     fit <- survival::survreg(Y ~ ., data = data.frame(X), dist = "exponential")
-    return(list(
-      "coefficients" = fit$coefficients,
-      "covariance" = vcov(fit)
-    ))
   }
-
+  return(list(
+    "coefficients" = fit$coefficients,
+    "covariance" = fit$var,
+    "deviance" = - 2 * fit$loglik[2],
+    "df" = fit$df.residual,
+    "scale" = 1
+  ))
 }
 
-
 #' @rdname fit_model
-# @importFrom timereg const
-
-fit_model.ah <- function(method, Y, X, id, ...) {
+fit_model.ah <- function(method, Y, X, ...) {
   if (! survival::is.Surv(Y)) {
     Y <- survival::Surv(Y)
   }
-  if (method$method == "ConstTime") {
-    # TODO: IS THIS CORRECT ?!?!
-    fit <- timereg::aalen(Y ~ ., data = data.frame(X), id = id, n.sim = 0)
-    return(list(
-      "cum" = fit$cum,
-      "cum.var" = fit$var.cum
-    ))
+  dist <- survival::survreg.distributions$exponential
+  dist$trans <- dist$itrans <- function(y) y
+  dist$dtrans <- function(y) rep(1,length(y))
+  if (length(X) == 0) {
+    fit <- survival::survreg(Y ~ 1, dist = dist)
   } else {
-    # TODO: HOW TO MAKE THE CORRECT
-    dist <- survival::survreg.distributions$exponential
-    dist$trans <- function(y) y # this does not work in small tests.....
-                                # it seems to work now -- but whats with the log(scale)
-    fit <- survival::survreg(Y ~ ., data = data.frame(X))
-    return(list(
-      "coefficients" = fit$coefficients,
-      "covariance" = vcov(fit)
-    ))
+    fit <- survival::survreg(Y ~ ., data = data.frame(X), dist = dist)
   }
+  return(list(
+    "coefficients" = fit$coefficients,
+    "covariance" = fit$var,
+    "deviance" = - 2 * fit$loglik[2],
+    "df" = fit$df.residual,
+    "scale" = 1))
+}
+
+#' @rdname fit_model
+fit_model.hazard <- function(method, Y, X, ...) {
+  if (! survival::is.Surv(Y)) {
+    Y <- survival::Surv(Y)
+  }
+  if (length(X) == 0) {
+    fit <- survival::survreg(Y ~ 1, dist = method$dist)
+  } else {
+    fit <- survival::survreg(Y ~ ., data = data.frame(X), dist = method$dist)
+  }
+  return(list(
+    "coefficients" = fit$coefficients,
+    "covariance" = fit$var,
+    "deviance" = - 2 * fit$loglik[2],
+    "df" = fit$df.residual,
+    "scale" = 1
+  ))
+}
+
+#' @rdname fit_model
+fit_nonparam_model <- function(method, Y, X, ...) {
+  UseMethod("fit_nonparam_model", method)
+}
+
+#' @rdname fit_model
+fit_nonparam_model.default <- function(method, Y, X, ...) {
+  stop("A time varying fitter function is not defined for this model class:",
+       class(method))
+}
+
+#' @rdname fit_model
+fit_nonparam_model.ph <- function(method, Y, X, id = NULL,  ...) {
+  if (! survival::is.Surv(Y)) {
+    Y <- survival::Surv(Y)
+  }
+  if (is.null(method$n.sim)) {
+    n.sim <- 50
+  } else {
+    n.sim <- method$n.sim
+  }
+  if (length(X) == 0) {
+    fit <- timereg::aalen(Y ~ 1, data = data.frame(X), id = id, n.sim = n.sim)
+  } else {
+    fit <- quiet(timereg::timecox(Y ~ ., data = data.frame(X),
+                                  id = id, n.sim = n.sim))
+  }
+  if (sum(is.na(fit$cum[2,])) > 0) {
+    stop("The model can not be fitted due to bugs in the dependencies.\n  ",
+         "The error has been reported to the maintainers of the 'timereg' package.")
+  }
+  if (n.sim != 0) {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum,
+      "sup" = unname(fit$pval.testBeqC),
+      "int" = unname(fit$pval.testBeqC.is))
+  } else {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum)
+  }
+  return(res)
+}
+
+#' @rdname fit_model
+fit_nonparam_model.ah <- function(method, Y, X, id = NULL, ...) {
+  if (! survival::is.Surv(Y)) {
+    Y <- survival::Surv(Y)
+  }
+  if (is.null(method$n.sim)) {
+    n.sim <- 50
+  } else {
+    n.sim <- method$n.sim
+  }
+  robust <- ifelse(n.sim == 0, 0, 1)
+  if (length(X) == 0) {
+    fit <- timereg::aalen(Y ~ 1, data = data.frame(X), id = id,
+                          n.sim = n.sim, robust = robust)
+  } else {
+    fit <- timereg::aalen(Y ~ ., data = data.frame(X), id = id,
+                          n.sim = n.sim, robust = robust)
+  }
+  if (sum(is.na(fit$cum[2,])) > 0) {
+    stop("The model can not be fitted due to bugs in the dependencies.\n  ",
+         "The error has been reported to the maintainers of the 'timereg' package.")
+  }
+  if (n.sim != 0) {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum,
+      "sup" = unname(fit$pval.testBeqC),
+      "int" = unname(fit$pval.testBeqC.is))
+  } else {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum)
+  }
+  return(res)
+}
+
+#' @rdname fit_model
+fit_nonparam_model.hazard <- function(method, Y, X, id = NULL, ...) {
+  if (! survival::is.Surv(Y)) {
+    Y <- survival::Surv(Y)
+  }
+  if (is.null(method$n.sim)) {
+    n.sim <- 50
+  } else {
+    n.sim <- method$n.sim
+  }
+  robust <- ifelse(n.sim == 0, 0, 1)
+  if (length(X) == 0) {
+    fit <- timereg::aalen(Y ~ 1, id = id, n.sim = n.sim, robust = robust)
+  } else if (method$link %in% c("proportional", "log")) {
+    fit <- quiet(timereg::timecox(Y ~ ., data = data.frame(X),
+                                  id = id, n.sim = n.sim, robust = robust))
+  } else if (method$link %in% c("additive", "identity")) {
+    fit <- timereg::aalen(Y ~ ., data = data.frame(X), id = id,
+                          n.sim = n.sim, robust = robust)
+  }
+  if (sum(is.na(fit$cum[2,])) > 0) {
+    stop("The model can not be fitted due to bugs in the dependencies.\n  ",
+         "The error has been reported to the maintainers of the 'timereg' package.")
+  }
+  if (n.sim != 0) {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum,
+      "sup" = unname(fit$pval.testBeqC),
+      "int" = unname(fit$pval.testBeqC.is))
+  } else {
+    res <- list(
+      "cum" = fit$cum,
+      "cum.var" = fit$var.cum)
+  }
+  return(res)
+
+  stop("The 'nonparam' method is only implementer for the cox and aalen hazard",
+       "models so far.")
 }
 
 
+quiet <- function(x) {
+  sink(tempfile())
+  on.exit(sink())
+  invisible(force(x))
+}
 
-
-
-
-# OLD : : : : @rdname fit_model
-#
-#fit_model.glm <- function(method, Y, X, ...) {
-#  if (is.null(method$family)) {
-#    stop("For model = 'glm' there must be specified a family in the method object")
-#  }
-#  fit <- stats::glm(Y ~ ., data = data.frame(Y,X), family = method$family)
-#  return(list("coefficients" = fit$coefficients,
-#              "covariance" = vcov(fit),
-#              "deviance" = fit$deviance,
-#              "null.deviance" = fit$null.deviance,
-#              "df" = sum(!is.na(fit$coefficients))))
-#}
-
-
-#fit_model.survreg <- function(method, Y, X, ...) {
-#  if (survival::is.Surv(Y) == FALSE) {
-#    Y <- survival::Surv(Y)
-#  }
-#  if (is.null(method$dist)) {
-#    stop("When using the 'survreg' fitting method a distribution must be",
-#         "specified in the method object with the name 'dist'.")
-#  }
-#  scale <- ifelse(is.null(method$scale), 0, method$scale)
-#  fit <- survival::survreg(Y ~ ., data = data.frame(X),
-#                           dist = method$dist, scale = scale)
-#
-#  if (length(fit$coefficients) == fit$df) {
-#    coef <- fit$coefficients
-#    var <- fit$var
-#  } else {
-#    coef <- c(fit$coefficients, fit$scale)
-#    var <- fit$var
-#  }
-#
-#  return(list("coefficients" = coef,
-#              "covariance" = var,
-#              "deviance" = (- 2 * fit$loglik[2]),
-#              "null.deviance" = ( - 2 * fit$loglik[1]),
-#              "df" = fit$df))
-#}
-
-
-# @rdname fit_model
-#fit_model.coxph <- function(method, Y, X, const = TRUE, ...) {
-#  if (survival::is.Surv(Y) == FALSE) {      # this should be moved out to ICP
-#    Y <- survival::Surv(Y)                  # it is too expensive to have in here
-#  }
-#  if (const) {
-#    if (length(X) == 0) {
-#      fit <- survival::coxph(Y ~ 1)
-#    } else {
-#      fit <- survival::coxph(Y ~ ., data = data.frame(X))
-#    }
-#    res <- list("coefficients" = fit$coefficients,
-#                "covariance" = vcov(fit),
-#                "deviance" = (- 2 * fit$loglik[2]),
-#                "null.deviance" = (- 2 * fit$loglik[1]),
-#                "df" = sum(!is.na(fit$coefficients)))
-#  } else {
-#    if (length(X) == 0) {
-#      fit <- timereg::timecox(Y ~ 1, n.sim = 100) # TODO can we set n-sim = 0?
-#    } else {
-#      fit <- timereg::timecox(Y ~ ., data = data.frame(X), n.sim = 100) # TODO can we set n-sim = 0?
-#    }
-#    res <- list(pvals = c(fit$pval.testBeqC, fit$pval.testBeqC.is))
-#  }
-#  return(res)
-#}
-
-
-
-
-
-
-
-# fit_model.aalen <- function(method, Y, X, const = TRUE, ...) {
-#   if (survival::is.Surv(Y) == FALSE) {  # This should be moved out to ICP
-#     Y <- survival::Surv(Y)              # it is too expencive to have in here
-#   }
-#   if (!is.null(method$n.sim)) {
-#     n.sim <- method$n.sim
-#   } else {
-#     n.sim <- 100
-#   }
-#   if (const) {
-#     if (length(X) == 0) {
-#       fit <- survival::aareg(Y ~ 1)
-#     } else {
-#       fit <- survival::aareg(Y ~ ., data = data.frame(X))
-#     }
-#     res <- list("coefficients" = fit$coefficients,
-#                 "covariance" = vcov(fit),
-#                 "deviance" = (- 2 * fit$loglik[2]),
-#                 "null.deviance" = (- 2 * fit$loglik[1]),
-#                 "df" = sum(!is.na(fit$coefficients)))
-#   }
-#   if (const) {
-#     if (length(X) == 0) {
-#       fit <- timereg::aalen(Y ~ 1, n.sim = 0) # is this right ??
-#     } else {
-#       X <- data.frame(X)
-#       fit <- eval(parse(text = paste0(
-#         "timereg::aalen(Y ~ ",
-#         paste0("const(", colnames(X), ")", collapse = " + "),
-#         ", data = X, n.sim = 0)"
-#       )))
-#     }
-#     coef <- fit$gamma
-#     var <- fit$robvar.gamma
-#     res <- list("coefficients" = coef,
-#                 "covariance" = var,
-#                 "deviance" = NULL,
-#                 "null.deviance" = NULL,
-#                 "df" = NULL)
-#   } else {
-#     if (length(X) == 0) {
-#       fit <- timereg::aalen(Y ~ 1, n.sim = n.sim)
-#       res <- list(pvals = c(fit$pval.testBeqC, fit$pval.testBeqC.is))
-#     } else {
-#       fit <- timereg::aalen(Y ~ ., data = data.frame(X), n.sim = n.sim)
-#       res <- list(pvals = c(fit$pval.testBeqC[-1], fit$pval.testBeqC.is[-1]))
-#     }
-#   }
-#   return(res)
-# }

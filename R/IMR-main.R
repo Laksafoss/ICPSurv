@@ -6,11 +6,11 @@
 #'
 #' @param M a list of models.
 #' @param method bla bla bla
+#' @param ... TODO
 #'
 #' @return DESCRIPTION OF THE RETUNED
 #'
 #' @export
-#'
 IMR <- function(M, method = "BS", ...) {
 
   #mf <- as.list(match.call(expand.dots = T))[-1]  # DO THIS DIFFERENTLY ??
@@ -50,18 +50,22 @@ IMR <- function(M, method = "BS", ...) {
 #' @param m a model object
 #'
 #' @return a list with the following three entries
-#'   \item{X} the fitted values of the model. In hazard models this is the
-#'     time points corresponding to observed events.
-#'   \item{Y} a list with the raw and standerdized residuals. In hazard models
-#'     this is the standerdized residuals found when fitting a line through the
-#'     estimated cumulative hazard.
-#'   \item{name} a ("short") string describing the model. This value will be
-#'     used as the model name in the final output.
-
+#'   \describe{
+#'     \item{X}{the fitted values of the model. In hazard models this is the
+#'       time points corresponding to observed events.}
+#'     \item{Y}{a list with the raw and standerdized residuals. In hazard models
+#'       this is the standerdized residuals found when fitting a line through the
+#'       estimated cumulative hazard.}
+#'     \item{name}{a ("short") string describing the model. This value will be
+#'       used as the model name in the final output.}
+#'   }
+#'
+#' @export
 find_data <- function(m) {
   UseMethod("find_data", m)
 }
 
+#' @rdname find_data
 find_data.default <- function(m) {
   if (is.null(dim(m))) {
     stop("When the default find_data method is used each model must be an ",
@@ -80,24 +84,27 @@ find_data.default <- function(m) {
               name = name))
 }
 
+#' @rdname find_data
 find_data.lm <- function(m) {
-  name <- paste0("lm(", format(terms(m)), ")")
+  name <- paste0("lm(", format(stats::terms(m)), ")")
   return(list(X = m$fitted.values,
-              Y = list(raw = m$residuals, std = rstandard(m)),
+              Y = list(raw = m$residuals, std = stats::rstandard(m)),
               name = name))
 }
 
+#' @rdname find_data
 find_data.glm <- function(m) {
-  name <- paste0("glm(", format(terms(m)),
+  name <- paste0("glm(", format(stats::terms(m)),
                  ", family = ",format(m$call$family),")")
   return(list(X = m$fitted.values,
-              Y = list(raw = m$residuals, std = rstandard(m)),
+              Y = list(raw = m$residuals, std = stats::rstandard(m)),
               name = name))
 }
 
+#' @rdname find_data
 find_data.coxph <- function(m) {
   data <- survival::basehaz(m, centered = FALSE)
-  form <- gsub("survival::", "", format(terms(m)))
+  form <- gsub("survival::", "", format(stats::terms(m)))
   if (!is.null(m$call$subset)) {
     form <- paste0(form, ", subset = ", m$call$subset)
   }
@@ -107,6 +114,7 @@ find_data.coxph <- function(m) {
               name = name))
 }
 
+#' @rdname find_data
 find_data.aalen <- function(m) {
   form <- gsub("survival::", "", format(m$call$formula))
   if (!is.null(m$call$id)) {
@@ -121,6 +129,7 @@ find_data.aalen <- function(m) {
               name = name))
 }
 
+#' @rdname find_data
 find_data.timecox <- function(m) {
   form <- gsub("survival::", "", format(m$call$formula))
   if (!is.null(m$call$id)) {
@@ -135,6 +144,7 @@ find_data.timecox <- function(m) {
               name = name))
 }
 
+#' @rdname find_data
 find_data.cox.aalen <- function(m) {
   X <- m$cum[,1]
   Y <- m$cum[,-1]
@@ -152,7 +162,7 @@ find_data.cox.aalen <- function(m) {
               name = name))
 }
 
-
+#' @rdname find_data
 find_data.aareg <- function(m) {
   Y <- apply(m$coefficient, 2, function(x) {cumsum(x)})
   form <- gsub("survival::", "", format(m$call$formula))
@@ -173,27 +183,31 @@ find_data.aareg <- function(m) {
 #'
 #' LONG DESCRIPTION
 #'
-#' @param mc
-#' @param X
-#' @param ...
+#' @param mc TODO
+#' @param X TODO
+#' @param norder TODO
+#' @param knots TODO
+#' @param L TODO
+#' @param W TODO
+#' @param ... TODO
 #'
 #' @return a function that has input \code{Y}.
-
-
 construct_analysis <- function(mc, X, ...) {
   UseMethod("construct_analysis", mc)
 }
 
+#' @rdname construct_analysis
 construct_analysis.default <- function(mc, X, ...) {
-  stop(class(mf), " is not a recognised method for Invariant Model Ranking")
+  stop(class(mc), " is not a recognised method for Invariant Model Ranking")
 }
 
+#' @rdname construct_analysis
 construct_analysis.BS <- function(mc, X, norder, knots, L, W, ...) {
   if (missing(norder)) {
     norder <- 4
   }
   if (missing(knots)) {
-    knots <- quantile(X)
+    knots <- stats::quantile(X)
   }
   if (missing(L)) {
     L <- 2
@@ -212,20 +226,17 @@ construct_analysis.BS <- function(mc, X, norder, knots, L, W, ...) {
     coef <- solve(crossprod(Bt), crossprod(Bt, Y_norm))
     return(W(diag(t(coef) %*% penmat %*% coef)))
   }
-
   return(foo)
 }
 
-
-
-
+#' @rdname construct_analysis
 construct_analysis.KS <- function(mc, X, W, ...) {
   if (missing(W)) {
     W <- max
   }
   if (all(mc %in% c("coxph", "aalen", "timecox", "cox.aalen", "aareg"))) {
     foo <- function(Y) {
-      fit <- solve(crossprod(X), crossprod(X, Y$val))
+      B <- solve(crossprod(X), crossprod(X, Y$val))
       resid <- Y$val - X %*% B
       n <- dim(Y$val)[1]
       sd <- sqrt(n * Y$var[n,])
@@ -233,11 +244,11 @@ construct_analysis.KS <- function(mc, X, W, ...) {
       return(W(apply(resid, 2, function(r) {max(r)})))
     }
   } else {
-
-
+    return(1) # TODO
   }
 }
 
+#' @rdname construct_analysis
 construct_analysis.CM <- function(mc, X, ...) {
-
+  return(1) # TODO
 }

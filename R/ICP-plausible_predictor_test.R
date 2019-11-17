@@ -32,9 +32,9 @@
 #'   \code{\link{ICP}} function the method object is inherited from the
 #'   \code{\link{ICP}} function.
 #' @param Y a vector or \code{\link[survival]{Surv}} object describing the target variable. The \code{Y}
-#'   will be passed to the \code{\link{model_fit}} function for fitting, and it
+#'   will be passed to the \code{\link{fit_model}} function for fitting, and it
 #'   is therefor important that the class of \code{Y} is understood by the
-#'   regression method used in \code{\link{model_fit}}. So if \code{method}
+#'   regression method used in \code{\link{fit_model}}. So if \code{method}
 #'   specifies that a cox regression is to be used, then \code{Y} must be a
 #'   \code{\link[survival]{Surv}} object.
 #' @param X a matrix, vector or data frame describing the covariates. WRITE
@@ -42,31 +42,15 @@
 #' @param E a vector describing the environmants
 #' @param level the alpha level of testing, but it is only relevant if the
 #'   method is iterative \emph{and} \code{fullAnalysis} is \code{FALSE}.
-#' @param fullAnalysis only has an effect if the method used is iterative. If
-#'   \code{TRUE} the method will go throught the iterative steps to determin a
-#'   p-vlaue, however if \code{FALSE} the method will only be tested at the
-#'   specified alpha level \code{level}.
+#' @param fullAnalysis TODO !!!!
+#' @param Bonferroni TODO
+#' @param ... TODO
 #'
 #'
 #' @return Returns a p-value, i.e. a number between 0 and 1, to be used in the
 #'   \code{\link{ICP}} function.
 #'
 #' @seealso \code{\link{ICP}} for the full wrapper function.
-#'
-#' @examples
-#' # create some data
-#' n <- 100
-#' E <- rbinom(n, 3, 0.3)
-#' X <- rnorm(n, E, 1)
-#' Y <- rpois(n, exp(X))
-#' E <- as.factor(E)
-#'
-#' # create the method object
-#' method <- structure(list(model = "glm", family = "poisson"),
-#'                     class = "EnvirIrrel")
-#'
-#' # test hypothesis using 'EnvirIrrel' method
-#' plausible_predictor_test(method, Y, X, E)
 #'
 #'
 #' @export
@@ -75,185 +59,184 @@ plausible_predictor_test <- function(method, Y, X, ...) {
   UseMethod("plausible_predictor_test", method)
 }
 
-
+#' @rdname plausible_predictor_test
 #' @export
-
 plausible_predictor_test.default <- function(method, Y, X, ...) {
-  warning(method$method,
+  stop(method$method,
           "is not recocnised as a testing method by the",
           "'plausible_predictor_test'")
   return(0)
 }
 
 
-
+#' @rdname plausible_predictor_test
+#' @export
+plausible_predictor_test.nonparam <- function(method, Y, X,
+                                              level, Bonferroni = TRUE, ...) {
+  fit <- fit_nonparam_model(method, Y, X, ...)
+  if (method$n.sim != 0) {
+    assign("smallest_possible_pvalue", 1 / method$n.sim, envir = parent.frame())
+    if(method$nonparamtest == "sup") {
+      pvals <- fit$sup
+    } else if (method$nonparamtest == "int") {
+      pvals <- fit$int
+    } else {
+      pvals <- c(fit$sup, fit$int)
+    }
+  } else {
+    # TODO remember to use bonferroni correction
+    stop("Khmaladze transformation not yet implemented")
+  }
+  if (sum(is.na(pvals)) > 0) {
+    stop("Faild to compute the necessary p-vlaues:\n",
+         "The error is in the 'timereg' package and has been reported.")
+  }
+  BonCorr <- ifelse(Bonferroni, length(pvals[!is.na(pvals)]), 1)
+  res <- min(1, min(pvals) * BonCorr, na.rm = TRUE)
+  return(res)
+}
 
 
 
 #' @rdname plausible_predictor_test
 #' @export
-
-
-## p-val of t-test for E = 2 * pnorm(-abs(tval)) with tval = coef[E] / sqrt(covar[E])
 plausible_predictor_test.EnvirIrrel <- function(method, Y, X, E, ...) {
   if (is.null(E)) {
     stop("The 'EnvirIrrel' method needs environments")
   }
-  if (length(X) == 0) {
-    fitE <- fit_model(method, Y, E)
-    pval <- 1- pchisq(fitE$null.deviance - fitE$deviance, df = fitE$df)
-  } else {
-    fitE <- fit_model(method, Y, cbind(X,E))
-    fit0 <- fit_model(method, Y, X)
-    pval <- 1 - pchisq(fit0$deviance - fitE$deviance, df = fitE$df - fit0$df)
-  }
+  fitE <- fit_model(method, Y, cbind(X,E))
+  fit0 <- fit_model(method, Y, X)
+  pval <- stats::pchisq((fit0$deviance - fitE$deviance)/fitE$scale,
+                        df = fit0$df - fitE$df,
+                        lower.tail = FALSE)
   return(pval)
 }
 
-
-
-
-#' @rdname plausible_predictor_test
-
+#' @rdname  plausible_predictor_test
+#' @export
 plausible_predictor_test.CR <- function(method, Y, X, E,
-                                        level, fullAnalysis, ...) {
-
-  specialnull <- # TODO this is for coxph and aalen semiparametric
-
-  if (length(X) == 0 & specialnull) {
-    return(dHSIC::dhsic.test(as.numeric(E), Y, method = "gamma")$p.value)
+                                        level, fullAnalysis,
+                                        Bonferroni = TRUE, ...) {
+  if (is.null(method$splits)) {
+    method$splits <- "all"
   }
-
-  if (method$split == "LOO") {
+  if (method$splits == "LOO") {
     models <- lapply(unique(E), function(e) {
-      list("E" = fit_model(method, Y[E == e], X[E == e, ]),
-           "O" = fit_model(method, Y[E != e], X[E != e, ]))
+      list(fit_model(method, Y[E == e], X[E == e, ]),
+           fit_model(method, Y[E != e], X[E != e, ]))
     })
-    # TODO define BonCorr here.....
-  } else if (mthod$split == "pairwise") {
+    BonCorr <- ifelse(Bonferroni, length(models) * 2, 1) # TODO IS IT TIMES 2??
+    alpha <- ifelse(is.null(level), NULL, level / BonCorr)
+    res <- sapply(models, function(m) {
+      intersect_CR(method, m, alpha, fullAnalysis, ...)
+    })
+    res <- ifelse(is.logical(res),
+                  all(res),
+                  min(1, min(res) * BonCorr))
+  } else {
     models <- lapply(unique(E), function(e) {
       fit_model(method, Y[E == e], X[E == e, ])
     })
-    BonCorr <- length(models[[1]]$coefficients)
+    BonCorr <- ifelse(Bonferroni, length(models), 1)
+    alpha <- ifelse(is.null(level), NULL, level / BonCorr)
+    res <- intersect_CR(method, models, alpha, fullAnalysis, ...)
+    res <- ifelse(is.logical(res),
+                  res,
+                  min(1, res * BonCorr))
   }
-
-  # TODO :
-  # Should we simple write intersect_CR(method, models, level, fullAnalysys)
-  # or should we have some if statements for fullAnalysis = F, alpha grid and so on..
-
+  return(res)
 }
 
-intersect_CR <- function(method, models, q) { # TODO
+#' Internal helper functions for CR plausible_predictor_test method
+#'
+#' @param method TODO
+#' @param models TODO
+#' @param alpha TODO
+#' @param fullAnalysis TODO
+#' @param tol TODO
+#' @param M1,M2 TODO
+#' @param ... TODO
+#'
+intersect_CR <- function(method, models, alpha, ...) { # TODO
   UseMethod("intersect_CR", method)
 }
 
-intersect_CR.marginal <- function(method, models, q) {
-  # THE RECTANGLE CASE
-}
-
-intersect_CR.pairwise <- function(method, models, q) {
-  # RUNES
-}
-
-intersect_CR.QCLP <- function(method, models, q) {
-  # Write the QCLP as a SOCP
-}
-
-
-
-
-#' @rdname plausible_predictor_test
-
-plausible_predictor_test.CRrectangle <- function(method, Y, X, E,
-                                                 level, fullAnalysis, ...) {
-  if (length(X) == 0 & length(grep("glm", method$model)) == 0){
-    pval <- dHSIC::dhsic.test(as.numeric(E), Y, method = "gamma")$p.value
+#' @rdname intersect_CR
+intersect_CR.marginal <- function(method, models, alpha,
+                                  fullAnalysis = FALSE, tol = 2e-10, ...) {
+  assign("smallest_possible_pvalue", tol, envir = parent.frame(n = 2))
+  if (is.null(alpha) | fullAnalysis) {
+    max_true <- 0
+    min_false <- 1
+    while ((min_false - max_true) > tol) {
+      alpha <- (min_false + max_true) / 2
+      test <- intersect_marginal_rectangle(models, alpha)
+      if (test) {max_true <- alpha} else {min_false <- alpha}
+    }
+    return(max_true) # alpha value
   } else {
-    models <- lapply(unique(E), function(e) {
-      fit_model(method, Y[E == e], X[E == e, ])
-    })
-    BonCorr <- length(models[[1]]$coefficients)
+    return(intersect_marginal_rectangle(models, alpha)) # boolean
+  }
+}
 
-    if (!fullAnalysis & !is.null(level)) {
-      q <- qnorm(1-level/(BonCorr*2))
-      test <- intersect_CI(models, q)
-      pval <- if (test) { 1 } else { 0 }
+#' @rdname intersect_CR
+intersect_CR.pairwise <- function(method, models, alpha,
+                                  fullAnalysis = FALSE, tol = 2e-10, ...) {
+  assign("smallest_possible_pvalue", tol, envir = parent.frame(n = 2))
+  pairs <- utils::combn(seq_along(models), 2)
+  if (is.null(alpha) | fullAnalysis) {
+    max_true <- 0
+    min_false <- 1
+    while ((min_false - max_true) > tol) {
+      alpha <- (min_false + max_true) / 2
+      test <- apply(pairs, 2, function(c) {
+        intersect_ellipsoid_pair(models[[c[1]]], models[[c[2]]], alpha)
+      })
+      if (all(test)) {max_true <- alpha} else {min_false <- alpha}
+    }
+    return(max_true) # alpha value
+  } else {
+    res <- apply(pairs, 2, function(c) {
+      intersect_ellipsoid_pair(models[[c[1]]], models[[c[2]]], alpha)
+    })
+    return(all(res)) # boolean
+  }
+}
+
+#' @rdname intersect_CR
+intersect_CR.QCLP <- function(method, models, alpha, fullAnalysis = TRUE, ...) {
+  m <- length(models[[1]]$coefficients)
+  if (fullAnalysis) {
+    res <- intersect_ellipsoid(models)
+    return(stats::pchisq(res[1], df = m, lower.tail = FALSE)) # alpha value
+  } else {
+    test <- intersect_marginal_rectangle(models, alpha)
+    if (test) {
+      res <- intersect_ellipsoid(models)
+      return(stats::pchisq(res[1], df = m, lower.tail = FALSE)) # alpha value
     } else {
-      max_true <- 0
-      min_false <- 1
-      while ((min_false - max_true) >  2e-10){
-        alpha <- (2 * min_false + max_true) / 3  # TODO is this how we want to do it ??
-        q <- qnorm(1-alpha/(BonCorr*2))
-        test <- intersect_CI(models, q)
-        if (test) { max_true <- alpha } else { min_false <- alpha }
-      }
-      pval <- max_true
+      return(FALSE)
     }
   }
-  return(pval)
 }
 
 
-intersect_CI <- function(models, q) {
+#' @rdname intersect_CR
+intersect_marginal_rectangle <- function(models, alpha) {
+  q <- stats::qchisq(1 - alpha, df = length(models[[1]]$coefficients))
   endpoints <- sapply(models, function(m) {
-    L <- m$coefficients - q * sqrt(diag(m$covariance))
-    U <- m$coefficients + q * sqrt(diag(m$covariance))
+    L <- m$coefficients - sqrt(q) * sqrt(diag(m$covariance))
+    U <- m$coefficients + sqrt(q) * sqrt(diag(m$covariance))
     return(rbind(L,U))
   })
-  endpoint_test <- sapply(seq_len(nrow(endpoints)/2), function(u) {
+  endpoint_test <- sapply(seq_len(nrow(endpoints) / 2), function(u) {
     max(endpoints[u * 2 - 1, ]) <= min(endpoints[u * 2, ])
   })
   return(all(endpoint_test))
 }
 
 
-
-#' @rdname plausible_predictor_test
-#' @export
-plausible_predictor_test.CRellipsoid <- function(method, Y, X, E,
-                                                 level, fullAnalysis, ...) {
-  if (length(X) == 0 & length(grep("glm", method$model)) == 0){
-    pval <- dHSIC::dhsic.test(as.numeric(E), Y, method = "gamma")$p.value
-  } else {
-    models <- lapply(unique(E), function(e) {
-      fit_model(method, Y[E == e], X[E == e, ])
-    })
-    BonCorr <- length(models[[1]]$coefficients)
-
-    if (!fullAnalysis & !is.null(level)) {
-      alpha_BonCorr <- level / BonCorr
-      q <- qnorm(1 - level / (BonCorr * 2))
-      test <- intersect_ellipsoid(models, q)
-      pval <- if (test) { 1 } else { 0 }
-    } else {
-      max_true <- 0
-      min_false <- 1
-      while ((min_false - max_true) >  2e-10){
-        alpha <- (2 * min_false + max_true) / 3  # TODO is this how we want to do it ??
-        alpha_BonCorr <- alpha / BonCorr
-        test <- intersect_ellipsoid(models, alpha_BonCorr)
-        if (test) { max_true <- alpha } else { min_false <- alpha }
-      }
-      pval <- max_true
-    }
-  }
-  return(pval)
-}
-
-
-
-intersect_ellipsoid <- function(models, alpha) {
-  pairs <- combn(length(models),2)
-  tests <- sapply(seq_len(ncol(pairs)), function(k) {
-    intersect_ellipsoid_pair(models[[pairs[1,k]]], models[[pairs[2,k]]], alpha)
-  })
-  return(all(tests))
-}
-
-
-# FROM RUNE :     ===========================================================  #
-# checks if two ellipsoid confidence regions with centers ci,
-# covariance matrices Ci and coverage 1-alpha intersect
+#' @rdname intersect_CR
 intersect_ellipsoid_pair <- function(M1, M2, alpha){
 
   c1 <- M1$coefficients
@@ -261,59 +244,56 @@ intersect_ellipsoid_pair <- function(M1, M2, alpha){
   c2 <- M2$coefficients
   C2 <- M2$covariance
 
-  if (alpha == 1) return(FALSE)
-  if (alpha == 0) return(TRUE)
-
   m <- length(c1)
-  q <- sqrt(qchisq(1-alpha, df = m))
+  q <- sqrt(stats::qchisq(1 - alpha, df = m))
 
   if (m == 1) {
-    return(abs(c1-c2) < (sqrt(C1)+sqrt(C2))*q)
+    return(abs(c1 - c2) < (sqrt(C1) + sqrt(C2)) * q)
   } else {
 
     e1 <- eigen(C1)
     d1 <- e1$values
-    d1 <- makePositive(d1)
+    d1 <- make_positive(d1)
     d1 <- sqrt(d1)
     U1 <- e1$vectors
 
-    c <- 1/q * diag(1/d1) %*% t(U1) %*%(c2-c1)
-    C <- diag(1/d1) %*% t(U1) %*% C2 %*% U1 %*% diag(1/d1)
+    c <- (1 / q) * diag(1 / d1) %*% t(U1) %*% (c2 - c1)
+    C <- diag(1 / d1) %*% t(U1) %*% C2 %*% U1 %*% diag(1 / d1)
 
     e <- eigen(C)
     U <- e$vectors
     d <- e$values
-    d <- makePositive(d,silent=TRUE)
+    d <- make_positive(d, silent = TRUE)
     d <- sqrt(d)
 
-    y <- -t(U)%*%c
+    y <- -t(U) %*% c
     y <- abs(y) # 0 expressed in coordinate system of l and rotated to the first quadrant
 
-    if(sum((y/d)^2) <= 1){ # y inside the ellipse
+    if(sum((y / d) ^ 2) <= 1){ # y inside the ellipse
       return(TRUE)
     } else { # Newton-Rhapson iterations
 
       # f goes monotone, quadratically to -1, so sure and fast convergence
-      f <- function(t) sum((d*y/(t+d^2))^2)-1
-      df <- function(t) -2*sum((y*d)^2/(t+d^2)^3)
+      f <- function(t) sum(( d * y / (t + d^2))^2) - 1
+      df <- function(t) - 2 * sum((y * d)^2 / (t + d^2)^3)
 
       t0 <- 0
       ft0 <- f(t0)
 
-      while(ft0>1e-4){
-        t0 <- t0 - f(t0)/df(t0)
+      while(ft0 > 1e-4){
+        t0 <- t0 - f(t0) / df(t0)
         ft0 <- f(t0)
       }
 
-      x0 <- y*d^2/(d^2+t0) # projection of y onto (c,C)
-      dist <- sqrt(sum((y-x0)^2))
+      x0 <- y * d^2 / (d^2 + t0) # projection of y onto (c,C)
+      dist <- sqrt(sum((y - x0)^2))
       return(dist < 1)
     }
   }
 }
 
 # (very) adhoc way of dealing with negative eigenvalues
-makePositive <- function (v, silent = TRUE){
+make_positive <- function (v, silent = TRUE){
   w <- which(v < 10^(-14))
   if (length(w) > 0 & !silent)
     warning("Some eigenvalues are below 10^(-14) and will therefore be regularized")
@@ -327,16 +307,118 @@ makePositive <- function (v, silent = TRUE){
   }
   return(v)
 }
-# end FROM RUNE ============================================================== #
 
 
-#' @rdname plausible_predictor_test
-#' @export
-plausible_predictor_test.ConstRegParam <- function(method, Y, X, level, ...) {
-  fit <- fit_model(method, Y, X, const = F)
-  pvals <- fit$pvals
-  max_pval <- max(pvals)
-  #test <- all(pvals >= level/length(pvals))
-  #pval <- if (test) { 1 } else { 0 }
-  return(max_pval/length(pvals))
+
+#' @rdname intersect_CR
+intersect_ellipsoid <- function(models) { # should return number
+  # -- tuning parameters -------------------------------------------------------
+  barrier_iter <- 5 # find better stopping criteria ?
+  tol_newton <- 0.1
+  small <- 1
+  mu <- 20
+  linesearch <- TRUE # page 464 Boyd & Vandenbergh
+  alpha <- 0.3 # must be between 0 and 0.5
+  beta <- 0.8 # must be between 0 and 1
+
+  # -- Find relevant sizes -----------------------------------------------------
+  ellipsoids <- lapply(models, function(m) {
+    P <- solve(m$covariance)
+    b <- matrix(m$coefficients, ncol = 1)
+    q <- - 2 * (P %*% b)
+    return(list(P = P, b = b, q = q))
+  })
+
+  # -- create relevant functions -----------------------------------------------
+  p <- length(ellipsoids)
+  f <- function(x) {
+    sapply(ellipsoids, function(e) {
+      diff <- x - e$b
+      t(diff) %*% e$P %*% diff
+    })
+  }
+  gf <- function(x) {
+    lapply(ellipsoids, function(e) {
+      2 * e$P %*% x + e$q
+    })
+  }
+  hf <- function(x) {
+    lapply(ellipsoids, function(e) {
+      2 * e$P
+    })
+  }
+  g <- function(s, tune, f) {tune * s - sum(log(s - f)) - log(s)}
+  linesearch_test <- function(s, x, f, decrement, tune, delta, step) {
+    s_delta <- s + step * delta[1, ]
+    if (s_delta <= 0) {return(TRUE)}
+    f_delta <- f(x + step * delta[-1, ])
+    if (max(f_delta) >= s_delta){return(TRUE)}
+    if(g(s_delta, tune, f_delta) >
+       g(s, tune, f) + alpha * step * decrement) {
+      return(TRUE)
+    }
+    return(FALSE)
+  }
+  gradient<- function(s, tune, f, gf) {
+    top <- tune - sum(1 / (s - f))
+    v <- lapply(1:p, function(i) {
+      (1 / (s - f[[i]])) * gf[[i]]
+    })
+    bottom <- Reduce("+", v)
+    return(matrix(c(top, bottom), ncol = 1))
+  }
+  hessian <- function(s, f, gf, hf) {
+    dsds <- sum(1 / (s - f) ^ 2)
+    v <- lapply(1:p, function(i) {
+      (1 / (s - f[[i]]) ^ 2) * gf[[i]]
+    })
+    dsdx <- - Reduce("+", v)
+    m <- lapply(1:p, function(i) {
+      (1 / (s - f[[i]]) ^ 2) * gf[[i]] %*% t(gf[[i]]) +
+        (1 / (s - f[[i]])) * hf[[i]]
+    })
+    dxdx <- Reduce("+", m)
+    return(cbind(rbind(dsds, dsdx), rbind(t(dsdx), dxdx)))
+  }
+
+
+  # -- logarithmic barrier method ----------------------------------------------
+  #x <- matrix(rowMeans(sapply(ellipsoids, function(e){e$b})), ncol = 1)
+  x <- ellipsoids[[1]]$b
+  s <- max(f(x)) + small
+  tune <- (sum(1 / (s - f(x))) * s + 1) / s
+
+  for (i in seq_len(barrier_iter)) {
+
+    # -- centering :  Newtons method
+    lambda <- tol_newton * 5
+    while (lambda / 2 > tol_newton) {
+      # .. calculate direction and decrement
+      f_val <- f(x)
+      gf_val <- gf(x)
+      hf_val <- hf(x)
+      gx <- gradient(s, tune, f_val, gf_val)
+      #invhx <- solve(hessian(s, f_val, gf_val, hf_val))
+      hg <- hessian(s, f_val, gf_val, hf_val)
+      invhx <- tryCatch(solve(hg),
+                        error = function(e) {
+                          solve(hg + diag(diag(hg) * 0.001, nrow(hg)))
+                        })
+      delta <- - invhx %*% gx
+      lambda <- - t(gx) %*% delta
+
+      # .. linesearch
+      step <- 1
+
+      while (linesearch_test(s, x, f_val, lambda, tune, delta, step)) {
+        step <- beta * step
+      }
+
+      # .. update (s,x)
+      s <- s + step * delta[1, ]
+      x <- x + step * delta[-1, ]
+    }
+    tune <- tune * mu
+  }
+  return(c(s,x))
 }

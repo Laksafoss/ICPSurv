@@ -8,7 +8,7 @@ Description: The description of a package is usually long,
     spanning multiple lines. The second and subsequent lines
     should be indented, usually with four spaces.
 Depends: R (>= 3.1.0)
-License: What license is it under?
+License: GPL
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -21,5 +21,5 @@ Suggests:
     testthat,
     knitr,
     rmarkdown
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0
 VignetteBuilder: knitr

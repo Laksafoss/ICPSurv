@@ -7,6 +7,12 @@
 \alias{fit_model.glm}
 \alias{fit_model.ph}
 \alias{fit_model.ah}
+\alias{fit_model.hazard}
+\alias{fit_nonparam_model}
+\alias{fit_nonparam_model.default}
+\alias{fit_nonparam_model.ph}
+\alias{fit_nonparam_model.ah}
+\alias{fit_nonparam_model.hazard}
 \title{Internal regression functions}
 \usage{
 fit_model(method, Y, X, ...)
@@ -17,9 +23,21 @@ fit_model(method, Y, X, ...)
 
 \method{fit_model}{glm}(method, Y, X, ...)
 
-\method{fit_model}{ph}(method, Y, X, id, ...)
+\method{fit_model}{ph}(method, Y, X, ...)
 
-\method{fit_model}{ah}(method, Y, X, id, ...)
+\method{fit_model}{ah}(method, Y, X, ...)
+
+\method{fit_model}{hazard}(method, Y, X, ...)
+
+fit_nonparam_model(method, Y, X, ...)
+
+\method{fit_nonparam_model}{default}(method, Y, X, ...)
+
+\method{fit_nonparam_model}{ph}(method, Y, X, id = NULL, ...)
+
+\method{fit_nonparam_model}{ah}(method, Y, X, id = NULL, ...)
+
+\method{fit_nonparam_model}{hazard}(method, Y, X, id = NULL, ...)
 }
 \arguments{
 \item{method}{a \strong{method object} created by the
@@ -34,34 +52,32 @@ ABOUT \code{X} WHEN TESTING THE EMPTY SET !!!!}
 \item{...}{additional arguments. At the moment only the additional argument
 \code{const} is allowed.}
 
-\item{const}{can be used in the \code{coxph} and
-\code{aalen} methods and must be logical. If \code{const = FALSE} then the
-survival model fitted will have time varying regression effects.
-Furthermore the return object is changed.}
+\item{id}{TODO}
 }
 \value{
 Depending on \code{method} the \code{fit_model} function returns
-  different lists. If \code{method$method != 'ConstTime'} the output list must
+  different lists. If \code{method$method} \eqn{!=} "\code{ConstTime}" the output list must
   contain the following
+  \describe{
+    \item{coefficients}{the estimated regression coefficients.}
+    \item{covariance}{the estimated covariance matrix.}
+    \item{deviance}{the deviance, i.e. \eqn{- 2 * LogLik}, where \eqn{LogLik}
+      is the log likelihood evaluated in the reported estimators.}
+    \item{df}{degrees of freedom}
+  }
 
-  \item{coefficients}{the estimated regression coefficients.}
-  \item{covariance}{the estimated covariance matrix.}
-  \item{deviance}{the deviance, i.e. \eqn{- 2 * LogLik}, where \eqn{LogLik}
-    is the log likelihood evaluated in the reported estimators.}
-  \item{null.deviance}{the deviance of the null hypothesis, i.e.
-    \eqn{- 2 * LogLik}, where \eqn{LogLik} is the log likelihood of the null
-    model  - the model with predictor effect zero.}
-  \item{df}{degrees of freedom}
+  If \code{method} has class "\code{ConstTime}" then the output list contains
+  ANNA: DO WE ALWAYS RETURN ALL 4 ??? If we don't need pvals then we may set
+  n.sim = 0
 
-  If \code{method$method == 'ConstTime'} then the output list contains
-  ANNA: DO WE ALWAYS RETURN ALL 4 ??? If we don't need pvals then we may set n.sim = 0
-
-  \item{cum} cumulative timevarying regression coefficients estimated within
-    the timeinterval with observations.
-  \item{var.cum} the martingale based pointwise variance estimated for
-    cumulatives.
-  \item{pval.testBeqC} Kolmogorov-Smirnov test p-values based on resampling.
-  \item{pval.testBeqC.is} Carmer von Mises test p-values based on resampling.
+  \describe{
+    \item{cum}{cumulative timevarying regression coefficients estimated within
+      the timeinterval with observations.}
+    \item{var.cum}{rhe martingale based pointwise variance estimated for
+      cumulatives.}
+    \item{pval.testBeqC}{Kolmogorov-Smirnov test p-values based on resampling.}
+    \item{pval.testBeqC.is}{Carmer von Mises test p-values based on resampling.}
+   }
 }
 \description{
 The \code{fit_model} function is a generic function meant for internal use in
@@ -71,25 +87,6 @@ the \code{ICPSurv} package, and as such it is not exported to the namespace.
 MORE DESCRIPTION
 
 MENTION SPECIAL CASE COX AND AALEN NOT CONST.
-}
-\examples{
-# create some data, here we simulate from a proportional hazard model
-X <- rnorm(100)
-Y <- (-runif(100)/(0.0001 * exp(X)))^(1/2.7)
-Y <- survival::Surv(Y)
-
-# specify method object, we can fit proportional hazard models with coxph
-method <- method_obj(method = "EnvirIrrel", model = "coxph")
-# one can note that the 'method' part of the method object
-# is not acually used in the fitter function;
-# it is however used by the wrapper function 'plausible_predictor_test'
-
-# fit
-fit_model(method, Y, X)
-
-
-# # # HOW ABOUT A CONST = FALSE EXAMPLE ??
-
 }
 \seealso{
 \code{\link{ICP}}, \code{\link{plausible_predictor_test}} for the

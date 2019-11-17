@@ -2,12 +2,36 @@
 % Please edit documentation in R/IMR-main.R
 \name{construct_analysis}
 \alias{construct_analysis}
+\alias{construct_analysis.default}
+\alias{construct_analysis.BS}
+\alias{construct_analysis.KS}
+\alias{construct_analysis.CM}
 \title{Internal Method for Constructing IMR Analysis}
 \usage{
 construct_analysis(mc, X, ...)
+
+\method{construct_analysis}{default}(mc, X, ...)
+
+\method{construct_analysis}{BS}(mc, X, norder, knots, L, W, ...)
+
+\method{construct_analysis}{KS}(mc, X, W, ...)
+
+\method{construct_analysis}{CM}(mc, X, ...)
 }
 \arguments{
-\item{...}{}
+\item{mc}{TODO}
+
+\item{X}{TODO}
+
+\item{...}{TODO}
+
+\item{norder}{TODO}
+
+\item{knots}{TODO}
+
+\item{L}{TODO}
+
+\item{W}{TODO}
 }
 \value{
 a function that has input \code{Y}.

@@ -4,9 +4,17 @@
 \alias{ICP}
 \title{Invariant Causal Prediction}
 \usage{
-ICP(Y, X, E = NULL, method = structure(list(model = "glm", family =
-  "gaussian"), class = "EnvirIrrel"), level = NULL, fullAnalysis = T,
-  maxNoVariables = 8, stopIfEmpty = FALSE, ...)
+ICP(
+  Y,
+  X,
+  E = NULL,
+  model = "lm",
+  method = "EnvirIrrel",
+  level = 0.05,
+  maxNoVariables = 8,
+  fullAnalysis = TRUE,
+  ...
+)
 }
 \arguments{
 \item{Y}{an object describing the response variable. \code{Y} will be passed
@@ -16,41 +24,37 @@ to the \code{\link{plausible_predictor_test}} for analyzing.}
 
 \item{E}{a vector, matrix or data frame describing the environments.}
 
-\item{method}{a \strong{method object} greated by the
-\code{\link{method_obj}} function. A method object is a list describing the
-regression model, and the list has class equal to the name of the method
-that should be invoked by the generic function
-\code{\link{plausible_predictor_test}}. The \strong{method object} list
-should always contain an entry named \code{model}, which equals a \code{R}
-function (e.g. "glm", "coxph").}
+\item{method}{a character which must correspond to a
+\code{\link{plausible_predictor_test}} method. In this package the methods
+\code{\link[=plausible_predictor_test.EnvirIrrel]{EnvirIrrel}},
+\code{\link[=plausible_predictor_test.CR]{CR}} and
+\code{\link[=plausible_predictor_test.nonparam]{nonparam}} are already
+defined. If the user defines a new S3 method for the
+\code{\link{plausible_predictor_test}} then this new method becomes a valid
+input for \code{method} here. For more details on how to implement your own
+method for use in the \code{ICP} function see
+\code{\link{plausible_predictor_test}}.}
 
 \item{level}{numerical value between 0 and 1 denoting the significance level
-used when testing. If not specified the algirithm will not return an
-estimated set of identified causal predictors at level \code{level}.}
-
-\item{fullAnalysis}{If \code{FALSE} those
-  \code{\link{plausible_predictor_test}} that find p-values based on
-  iterative test only test the hypothesis at the specified \code{level}.
-  Hence \code{level} must be specified if \code{fullAnalysis} is set to
-  \code{FALSE}.
-
-  The inbuilt \code{\link{plausible_predictor_test}} for the
-  \code{CRrectangle} and \code{CRellipsoid} method are both example of tests,
-  that find the p-values using iterative tests. So if one of these methods is
-  used, setting \code{fullAnalysis} to \code{FALSE} will save computational
-  time. This does however also mean that it is not possible to estimate the
-  p-values of the individual variables.}
+used when testing. If not specified the algirithm will only calculate the
+p-values of the null hypothesis \eqn{H_{0,S}} and draw no conclusions based
+on these values.}
 
 \item{maxNoVariables}{The maximal number of variables in the tested subsets
-of \code{X}. A smaller number saves computational time.}
+of \code{X}. A smaller number saves computational time, but also
+corresponds to assuming that the target variable \code{Y} has at most
+\code{maxNoVariables} identifiable predictors.}
 
-\item{stopIfEmpty}{If \code{TRUE} the procedure will stop if the null
-hypothesis for the empty set has been accepted. Setting to \code{TRUE} will
-save computational time in these cases, but means that an analysis of other
-subsets of \code{X} is lost.}
+\item{fullAnalysis}{if \code{FALSE} different computations time saving
+options will be enabled and as a result many methods will not be able to
+return proper p-values of the null hypothesis \eqn{H_{0,S}}. In turn this
+means that the method will no longer be able to estime the significanse of
+a single variable. \code{fullAnalysis = FALSE} will result in different
+behavior for different \code{methods}, so for a more detailed discussion of
+concrete effects see the help page for the chooosen \code{method}.}
 
 \item{...}{additional arguments carried to the
-\code{\link{plausibel_predictor_test}}.}
+\code{\link{plausible_predictor_test}}.}
 }
 \value{
 Returns an object of class \code{ICP}. Such an object will at least
@@ -83,9 +87,9 @@ A method for finding causal predictors of a target variable.
 }
 \details{
 The \code{ICP} function implements tooles for the \emph{Invariant Causal
-Predictor} methodology described when the target variable is either described
-by a glm, additive hazard model or multiplicative hazard model. As such the
-target variable \code{Y} is allowed to be both a vector and a survival object.
+Predictor} methodology when the target variable may be described by a lm,
+glm or hazard model. To allow for survival type models the target variable
+\code{Y} is allowed to be both a vector and a survival object.
 
 The \code{ICP} function is essentially a wrapper function for the
 \code{\link{plausible_predictor_test}} which tests the central null
@@ -97,80 +101,49 @@ in distribution for all environments \eqn{e,f}. If the data is time dependent
 we formulate an analog invariance statement for all time points \eqn{t} and
 \eqn{s}.
 
-In the \code{ICPSurv} package 3 standard methods for the generic function
+In the \code{ICPSurv} package three standard methods for the generic function
 \code{\link{plausible_predictor_test}} has been implemented for testing the
-null hypothesis above. For further discussion on how to implement new testing
-methods for the above null hypothesis see
-\code{\link{plausible_predictor_test}}.
-
-To make the \code{ICP} function work correctly with the
-\code{\link{plausible_predictor_test}} function a \strong{method object}
-\code{method} must be specfied using the \code{\link{method_obj}} function.
-The class of the \strong{method object} must correspond to an implemeted
-method of the generic function \code{\link{plausible_predictor_test}}.
+null hypothesis above. These are the
+\code{\link[=plausible_predictor_test]{EnvirIrrel}},
+\code{\link[=plausible_predictor_test]{CR}} and
+\code{\link[=plausible_predictor_test]{nonparam}} method. For further
+discussion on how to implement new testing methods for the above null
+hypothesis see \code{\link{plausible_predictor_test}}.
 }
 \examples{
 # ===========================================================================
-# A simple example with normal distributions and no time dependent variables
-# First we simulate data.
-G <- matrix(c(0,1,1,1,0,0,0,0,0,0.4,0,0,0,0,0.4,0,0,0,0,0,0,0,0,0,0),
-            ncol = 5, byrow = T,
-            dimnames = list(c("E","X1","X2","X3","Y"), c("E","X1","X2","X3","Y")))
-sim <- c("sample(c(0,5,10),N,replace=T)", rep("rnorm(N,BETA,1)",4))
-out <- list(Y = 5, X = 2:4, E = 1)
-SIM <- sim_from_adj(G, 100, sim, out)
-# note that Y has parents X1 and X2
-
-# create list describing regression model
-method <- list(model = "glm", family = "gaussian")
-
-# analyze using the "Environment Irrelevance test"
-class(method) <- "EnvirIrrel"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-
-# analyze using the old marginal confidence interval test
-class(method) <- "CRrectangle"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-
-# analyze using the new "Confidence Region" test with correct ellipsoid CR's
-class(method) <- "CRellipsoid"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-# ---------------------------------------------------------------------------
-
-
+# An example with normal distributions
+n <- 500
+E <- sample(5L, n, replace = TRUE)
+X <- rnorm(n, E, 1)
+Y <- rnorm(n, X, 1)
+ICP(Y, X, E) # Environment Irrelevance Test
+ICP(Y, X, E, method = "CR") # Confidence Region Test
 
 # ===========================================================================
-# A simple example with poisson distributions and no time dependent variables
-# First we simulate data.
-G <- matrix(c(0,1,1,1,0,0,0,0,0,0.4,0,0,0,0,0.4,0,0,0,0,0,0,0,0,0,0),
-            ncol = 5, byrow = T,
-            dimnames = list(c("E","X1","X2","X3","Y"), c("E","X1","X2","X3","Y")))
-sim <- c("sample(c(0,5,10),N,replace=T)", rep("rnorm(N,BETA,1)",3), "rpois(N,exp(BETA))")
-out <- list(Y = 5, X = 2:4, E = 1)
-SIM <- sim_from_adj(G, 100, sim, out)
-# note that Y has parents X1 and X2
+# An example with a poisson distribution
+Y <- rpois(n, exp(X))
+# Environment Irrelevance Test
+ICP(Y, X, E, model = "glm", family = "poisson")
+# Intersecting Confidence Region Test
+ICP(Y, X, E, model = "glm", family = "poisson", method = "CR")
 
-# create list describing regression model
-method <- list(model = "glm", family = "poisson")
-
-# analyze using the "Environment Irrelevance test"
-class(method) <- "EnvirIrrel"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-
-# analyze using the old marginal confidence interval test
-class(model) <- "CRrectangle"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-
-# analyze using the new "Confidence Region" test with correct ellipsoid CR's
-class(method) <- "CRellipsoid"
-ICP(SIM$Y, SIM$X, SIM$E, method = method, level = 0.05)
-# ---------------------------------------------------------------------------
-
-
+# ===========================================================================
+# An example with right censored survival times
+Y <- rexp(n, exp(- 1.5 *X))
+C <- rexp(n, exp(- 2.0 * X))
+time <- pmin(Y, C)
+status <- time == Y
+# Environment Irrelevance Test
+ICP(survival::Surv(time, status), X, E, model = "ph")
+# Intersecting Confidence Regions Test
+ICP(survival::Surv(time, status), X, E, model = "ph", method = "CR")
+# Non-parametric Constant Effect Over Time Test
+ICP(survival::Surv(time, status), X, E, model = "ph", method = "nonparam")
 
 }
 \references{
-Peters, Jonas, Peter Bühlmann, and Nicolai Meinshausen. \emph{Causal
+Jonas Peters, Peter Bühlmann, and Nicolai Meinshausen. \emph{Causal
   inference by using invariant prediction: identification and confidence
   intervals.} Journal of the Royal Statistical Society: Series B (Statistical
   Methodology) 78.5 (2016): 947-1012.

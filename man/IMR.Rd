@@ -10,6 +10,8 @@ IMR(M, method = "BS", ...)
 \item{M}{a list of models.}
 
 \item{method}{bla bla bla}
+
+\item{...}{TODO}
 }
 \value{
 DESCRIPTION OF THE RETUNED

@@ -2,30 +2,82 @@ context("ICP Input")
 
 
 test_that("method_obj", {
+  # standard
   expect_is(method_obj(), c("method_obj","EnvirIrrel","glm"))
-  expect_is(method_obj(method = "ConstTime"), c("method_obj","ConstTime","ah"))
-  expect_is(method_obj(model = "glm", family = gaussian())$family, "family")
-  expect_is(method_obj(model = "glm")$family, "character")
 
-  expect_error(method_obj(method = "TimeConst", model = "glm"),
-               "'method' must be 'CR', 'EnvirIrrel' or 'ConstTime'")
+  # EnvirIrrel
+  mf <- method_obj(model = "lm", method = "EnvirIrrel")
+  expect_is(mf, c("method_obj","EnvirIrrel","lm"))
 
-  # when method_obj can allow for new methods these tests should be changed
-  expect_error(method_obj(method = "dummy"),
-               "'method' must be 'CR', 'EnvirIrrel' or 'ConstTime'")
-  expect_error(method_obj(model = "dummy"),
-               "'model' must be 'lm', 'glm', 'ph' or 'ah'")
+  mf <- method_obj(model = "glm", method = "EnvirIrrel")
+  expect_is(mf, c("method_obj","EnvirIrrel","glm"))
+  expect_equal(mf$family, "gaussian")
+
+  mf <- method_obj(model = "glm", method = "EnvirIrrel", family = "poisson")
+  expect_is(mf, c("method_obj","EnvirIrrel","glm"))
+  expect_equal(mf$family, "poisson")
+
+  mf <- method_obj(model = "glm",
+                   method = "EnvirIrrel",
+                   family = poisson(link = "log"))
+  expect_is(mf, c("method_obj","EnvirIrrel","glm"))
+  expect_is(mf$family, "family")
+
+  mf <- method_obj(model = "hazard", method = "EnvirIrrel")
+  expect_is(mf, c("method_obj", "EnvirIrrel", "hazard"))
+  expect_is(mf$dist, "list")
+  expect_is(mf$link, "character")
+
+  # CR
+  mf <- method_obj(method = "CR")
+  expect_is(mf, c("method_obj", "CR", "glm", "QCLP"))
+  expect_is(mf$solver, "character")
+  expect_is(mf$solver, "character")
+
+  # nonparam
+  mf <- method_obj(model = "hazard", method = "nonparam")
+  expect_is(mf, c("method_obj","nonparam","hazard"))
+  expect_is(mf$link, "character")
+  expect_is(mf$dist, "list")
+  expect_equal(mf$dist$dist, "extreme")
+  expect_equal(mf$nonparamtest, "both")
+  expect_equal(mf$n.sim, 50)
+
+  expect_error(method_obj(method = "nonparam"),
+               "A 'nonparamtest' for glm is not yet avalible in this package")
+})
+
+n <- 20
+E <- rep(c(0,1), each = n/2)
+X <- data.frame(X1 = rnorm(n, E,1), X2 = rnorm(n, E==0, 1))
+Y <- X$X1 - 2*X$X2 + rnorm(n)
+
+
+test_that("X is vector, matrix or data.frame", {
+  expect_is(ICP(Y, X, E), "ICP")
+
+  Xn <- as.matrix(X)
+  expect_is(ICP(Y, Xn, E), "ICP")
+
+  Xn <- X[,1]
+  expect_is(ICP(Y, Xn, E), "ICP")
+
+  Xn[X[,1] <= -2.9] <- "b"
+  Xn[X[,1] >=  1.0] <- "c"
+  expect_is(ICP(Y, Xn, E), "ICP")
+
+  expect_is(ICP(Y, X = list(X1 = X[,1], X2 = X[,2]), E), "ICP")
+  expect_error(ICP(Y, X = list(X1 = X[,1], X2 = X[1:(n-2),2]), E),
+               "When 'X' is a vector it must be coercible to data.frame.")
+  expect_error(ICP(Y, X = matrix((n + 5) * 5, ncol = 5), E),
+               "'E' and 'X' must have same length / number of rows")
+  expect_error(ICP(Y, X = 1:(n + 5), E),
+               "'E' and 'X' must have same length / number of rows")
+  expect_error(ICP(Y, X = NULL, E), "'X' must be a vector, matrix or data frame")
 
 })
 
-
 test_that("maxNoVariables test", {
-
-  n <- 100
-  E <- rbinom(n, 3, 0.4)
-  X <- data.frame(X1 = rnorm(n, E,1), X2 = rnorm(n, E==0, 1))
-  Y <- X$X1 - 2*X$X2 + rnorm(n)
-
   expect_error(ICP(Y, X, E, maxNoVariables = 0),
                "'maxNoVariables' must be an integer >= 1")
   expect_error(ICP(Y, X, E, maxNoVariables = c(1,0)),
@@ -37,15 +89,7 @@ test_that("maxNoVariables test", {
   expect_is(ICP(Y, X, E, maxNoVariables = 2),"ICP")
 })
 
-
 test_that("level is between 0 and 1", {
-
-  n <- 100
-  E <- rbinom(n, 3, 0.4)
-  X <- data.frame(X1 = rnorm(n, E,1), X2 = rnorm(n, E==0, 1))
-  Y <- X$X1 - 2*X$X2 + rnorm(n)
-
-  expect_is(ICP(Y, X, E), "ICP")
   expect_is(ICP(Y, X, E, level = 0.05), "ICP")
   expect_error(ICP(Y, X, E, level = "a"),
                "'level' must either be NULL or a number strictly between 0 and 1")
@@ -59,75 +103,14 @@ test_that("level is between 0 and 1", {
                "'level' must either be NULL or a number strictly between 0 and 1")
 })
 
-
-
-
-test_that("X is vector, matrix or data.frame", {
-
-  n <- 100
-  E <- rbinom(n, 3, 0.4)
-  X <- data.frame(X1 = rnorm(n, E, 1), X2 = rnorm(n, E == 0, 1))
-  Y <- X$X1 - 2*X$X2 + rnorm(n)
-
-  expect_is(ICP(Y, X, E), "ICP")
-
-  X <- matrix(c(rnorm(n, E, 1),rnorm(n, E == 0, 1)), ncol = 2)
-  Y <- X[ ,1] - 2*X[,2] + rnorm(n)
-  expect_is(ICP(Y, X, E), "ICP")
-
-  X <- rnorm(n, E, 1)
-  Y <-  2*X + rnorm(n)
-  expect_is(ICP(Y, X, E), "ICP")
-
-  X <- rep(c("a", "b", "c"), length.out = n)
-  Y <- rnorm(n)
-  Y[X=="a"] <- Y[X=="a"]
-  Y[X=="c"] <- Y[X=="c"]
-  expect_is(ICP(Y, X, E), "ICP")
-
-  # SHOULD WE ALLOW X TO BE LIST LIKE BELOW
-  #X <- list(X1 = rnorm(n, 5, 1), X2 = rnorm(n, 0, 1))
-  #Y <- X["X1"] - 2*X["X2"] + rnorm(n)
-  #expect_is(ICP(Y, X, E), "ICP")
-
-  X <- matrix(1:80, ncol = 5)
-  expect_error(ICP(Y, X, E),
-               "'E' and 'X' must have same length / number of rows")
-
-  X <- 1:80
-  expect_error(ICP(Y, X, E),
-               "'E' and 'X' must have same length / number of rows")
-
-  X <- NULL
-  expect_error(ICP(Y, X, E),
-               "'X' must be a vector, matrix or data frame")
-
-})
-
-
-
 test_that("E is a propper enviroment vector", {
-
-  n <- 200
-  E <- rbinom(n, 2, 0.4)
-  X <- data.frame(X1 = rnorm(n, E, 1), X2 = rnorm(n, E == 0, 1))
-  Y <- X$X1 - 2*X$X2 + rnorm(n)
-
-  expect_is(ICP(Y, X, E), "ICP")
-
-  E <- data.frame("E1" = E,
-                  "E2" = sample(c("a", "b"), n, replace = T))
-  expect_is(ICP(Y, X, E), "ICP")
-
-  E <- list("E1" = E$E1, "E2" = E$E2)
-  expect_error(ICP(Y, X, E), "'E' must be a vector")
-
-  E <- rep(1,20)
-  expect_error(ICP(Y, X, E), "'E' and 'X' must have same length / number of rows")
-
-  E <- c(1, rep(2, n - 1))
-  expect_error(ICP(Y, X, E), NULL)
-
+  En <- data.frame("E1" = E, "E2" = rep(c(1,2,3,4), each = n/4))
+  expect_is(ICP(Y, X, En), "ICP")
+  expect_is(ICP(Y, X, E = as.matrix(En)), "ICP")
+  expect_is(ICP(Y, X, E = as.factor(E)), "ICP")
+  expect_error(ICP(Y, X, E = list("E1" = En$E1, "E2" = En$E2)),
+               "'E' must be vector, matrix, data frame or factor")
+  expect_error(ICP(Y, X, E = rep(1, n + 5)),
+               "'E' and 'X' must have same length / number of rows")
+  expect_error(ICP(Y, X, E = c(1, rep(2, n - 1))), NULL)
 })
-
-
