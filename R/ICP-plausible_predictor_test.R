@@ -135,6 +135,13 @@ plausible_predictor_test.CR <- function(method, Y, X, E,
                   min(1, min(res) * BonCorr))
   } else {
     models <- lapply(unique(E), function(e) {
+      check <- sapply(seq_len(ncol(X)), function(i) {
+        ifelse(length(unique(X[E == e,i])) > 1, TRUE, FALSE)
+      })
+      if (! all(check)) {
+        stop(paste("One or more variables only attain one value when E =", e),
+             call. = FALSE)
+      }
       fit_model(method, Y[E == e], X[E == e, ])
     })
     BonCorr <- ifelse(Bonferroni, length(models), 1)
