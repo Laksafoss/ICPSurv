@@ -112,11 +112,69 @@ plausible_predictor_test.EnvirIrrel <- function(method, Y, X, E, ...) {
   return(pval)
 }
 
+
+
+
+
+
+check_for_degeneracy <- function(Y, X, E, ...) {
+  UseMethod("check_for_degeneracy", Y)
+}
+check_for_degeneracy.default <- function(Y, X, E, ...) {
+  text <- paste0("Target variable of class ", class(Y), " is not recognised by ",
+                 "the 'check_for_degeneracy' test for the Intersecting ",
+                 "Confidence Regions test (CR).")
+  stop(text)
+}
+check_for_degeneracy.numeric <- function(Y, X, E, ...) {
+  index <- lapply(unique(E), function(e) {
+    which(E == e)
+  })
+  Y_check <- X_check <- TRUE
+  for (i in seq_along(index)) {
+    Y_check <- ifelse(length(unique(Y[index[[i]]])) > 1, TRUE, FALSE)
+    if (!Y_check) {break}
+    for (j in seq_len(ncol(X))) {
+      X_check <- ifelse(length(unique(X[index[[i]],j])) > 1, TRUE, FALSE)
+      if (!X_check) {break}
+    }
+  }
+  if (Y_check & X_check) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+check_for_degeneracy.Surv <- function(Y, X, E, ...) {
+  index <- lapply(unique(E), function(e) {
+    which(E == e)
+  })
+  X_check <- TRUE
+  for (i in seq_along(index)) {
+    for (j in seq_len(ncol(X))) {
+      X_check <- ifelse(length(unique(X[index[[i]],j])) > 1, TRUE, FALSE)
+      if (!X_check) {break}
+    }
+  }
+  if (X_check) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+
+
+
 #' @rdname  plausible_predictor_test
 #' @export
 plausible_predictor_test.CR <- function(method, Y, X, E,
                                         level, fullAnalysis,
                                         Bonferroni = TRUE, ...) {
+  if (!check_for_degeneracy(Y, X, E)) {
+    stop("One or more variables become degenerated when subsetting data by ",
+         "environment 'E'")
+  }
   if (is.null(method$splits)) {
     method$splits <- "all"
   }
@@ -135,13 +193,6 @@ plausible_predictor_test.CR <- function(method, Y, X, E,
                   min(1, min(res) * BonCorr))
   } else {
     models <- lapply(unique(E), function(e) {
-      check <- sapply(seq_len(ncol(X)), function(i) {
-        ifelse(length(unique(X[E == e,i])) > 1, TRUE, FALSE)
-      })
-      if (! all(check)) {
-        stop(paste("One or more variables only attain one value when E =", e),
-             call. = FALSE)
-      }
       fit_model(method, Y[E == e], X[E == e, ])
     })
     BonCorr <- ifelse(Bonferroni, length(models), 1)
