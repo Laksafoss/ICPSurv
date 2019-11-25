@@ -4,12 +4,25 @@ n <- 100
 E <- rbinom(n, 2, 0.5)
 X <- data.frame(X1 = rnorm(n, E, 1), X2 = rnorm(n, 5, 1))
 
+test_that("B-Spline lm", {
+  Y <- rnorm(n, - 1.5 * X$X1)
+  fit1 <- stats::lm(Y ~ X1, data = X)
+  fit2 <- stats::lm(Y ~ X2, data = X)
+  fit3 <- stats::lm(Y ~ X1 + X2, data = X)
+  analysis <- IMR(list(fit1 = fit1, fit2, fit3 = fit3), knots = 5)
+  expect_is(analysis, "IMR")
+  expect_is(analysis$ranking, "data.frame")
+  expect_is(analysis$method, "data.frame")
+  expect_is(analysis$call, "call")
+})
+
+
 test_that("B-Spline coxph", {
   Y <- rexp(n, exp(- 1.5 * X$X1))
   fit1 <- survival::coxph(survival::Surv(Y) ~ X1, data = X)
   fit2 <- survival::coxph(survival::Surv(Y) ~ X2, data = X)
   fit3 <- survival::coxph(survival::Surv(Y) ~ X1 + X2, data = X)
-  analysis <- IMR(list(fit1 = fit1, fit2, fit3 = fit3))
+  analysis <- IMR(list(fit1 = fit1, fit2, fit3 = fit3), knots = 5)
   expect_is(analysis, "IMR")
   expect_is(analysis$ranking, "data.frame")
   expect_is(analysis$method, "data.frame")

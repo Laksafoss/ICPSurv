@@ -282,37 +282,28 @@ construct_analysis.CR <- function(mc, data, ...) {
 
 #' @rdname construct_analysis
 construct_analysis.BS <- function(mc, data, norder, knots, L, W, ...) {
-  if (is.null(data$X)) {
-    stop("The 'BS' method requires that 'find_data' outputs an 'X'.")
-  }
-  X <- data$X
   if (missing(norder)) { norder <- 4 }
-  if (missing(knots)) {
-    knots <- stats::quantile(X)
-  }
   if (missing(L)) { L <- 2 }
   if (missing(W)) { W <- max }
-  basis <- fda::create.bspline.basis(norder = norder, breaks = knots)
-  penmat <- fda::bsplinepen(basis, Lfdobj = L)
-
-  foo <- function(data) {
-    if (is.null(data$Y$raw)) {
-      stop("The 'BS' method requres that 'find_data' outputs a 'Y'.")
-    }
-    Y_norm <- normalize(data$Y$raw)
-    Bt <- fda::eval.basis(data$X, basis)
-    coef <- solve(crossprod(Bt), crossprod(Bt, Y_norm))
-    return(W(diag(t(coef) %*% penmat %*% coef)))
+  if (missing(knots)) {
+    knots <- max(min(round(length(data$target) / 100), 30), 3)
   }
-  nk <- length(knots)
+  if (is.numeric(knots)) {
+    if (length(knots) == 1) {
+      qq <- seq(0, 1, length.out = knots)
+    }
+  } else {
+    stop("'knots' must be a numeric of length 1.")
+  }
+  nk <- length(qq)
   if (nk <= 3) {
-    knots_str <- paste0(nk, " (", paste0(round(knots, 2), collapse = ","), ")")
+    knots_str <- paste0(nk, " (", paste0(round(qq, 2), collapse = ","), ")")
   } else {
     knots_str <- paste0(nk,
                         " (",
-                        paste0(round(knots[c(1,2)], 2), collapse = ","),
+                        paste0(round(qq[c(1,2)], 2), collapse = ","),
                         ",...,",
-                        paste0(round(knots[nk],2)),
+                        paste0(round(qq[nk],2)),
                         ")")
   }
   method <- data.frame(c("Basis-Splines",
@@ -320,6 +311,22 @@ construct_analysis.BS <- function(mc, data, norder, knots, L, W, ...) {
                          knots_str),
                        row.names = c("Method:", "norder:", "Knots:"),
                        fix.empty.names = FALSE)
+
+  foo <- function(data) {
+    if (is.null(data$X)) {
+      stop("The 'BS' method requires that 'find_data' outputs an 'X'.")
+    }
+    if (is.null(data$Y$raw)) {
+      stop("The 'BS' method requres that 'find_data' outputs a 'Y'.")
+    }
+    breaks <- stats::quantile(data$X, qq)
+    basis <- fda::create.bspline.basis(norder = norder, breaks = breaks)
+    penmat <- fda::bsplinepen(basis, Lfdobj = L)
+    Y_norm <- normalize(data$Y$raw)
+    Bt <- fda::eval.basis(data$X, basis)
+    coef <- solve(crossprod(Bt), crossprod(Bt, Y_norm))
+    return(W(diag(t(coef) %*% penmat %*% coef)))
+  }
   return(list(analysis = foo,
               method = method,
               critical = "Large values indicate a lack of invariance."))
