@@ -8,11 +8,11 @@
 \alias{construct_analysis.CM}
 \title{Internal Method for Constructing IMR Analysis}
 \usage{
-construct_analysis(mc, X, ...)
+construct_analysis(mc, data, ...)
 
-\method{construct_analysis}{default}(mc, X, ...)
+\method{construct_analysis}{default}(mc, data, ...)
 
-\method{construct_analysis}{BS}(mc, X, norder, knots, L, W, ...)
+\method{construct_analysis}{BS}(mc, data, norder, knots, L, W, ...)
 
 \method{construct_analysis}{KS}(mc, X, W, ...)
 
@@ -21,7 +21,7 @@ construct_analysis(mc, X, ...)
 \arguments{
 \item{mc}{TODO}
 
-\item{X}{TODO}
+\item{data}{TODO}
 
 \item{...}{TODO}
 

@@ -9,12 +9,24 @@ IMR(M, method = "BS", ...)
 \arguments{
 \item{M}{a list of models.}
 
-\item{method}{bla bla bla}
+\item{method}{the method used for calculating invariance scores. Note that
+  the different methods of calculations are not necessarily comparable.
 
-\item{...}{TODO}
+  The default method is \code{BS}, which fits a b-spline and reports the
+  curvature as an invariance score. For more detailes see
+  \code{\link{construct_anaysis.BS}}.}
+
+\item{...}{additional arguments to be passed to the
+\code{\link{construct_analysis}} function}
 }
 \value{
-DESCRIPTION OF THE RETUNED
+\code{IMR} returns a \code{\link[base]{data.frame}} of
+  \code{\link[base]{class}}"\code{IMR}". The \code{\link[base]{data.frame}}
+  has two columns:
+  \describe{
+    \item{model}{The model.}
+    \item{roughness}{invariance score}
+  }
 }
 \description{
 A method for ranking models based on invariance.

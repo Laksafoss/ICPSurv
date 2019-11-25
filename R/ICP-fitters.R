@@ -101,6 +101,33 @@ fit_model.ph <- function(method, Y, X, ...) {
   ))
 }
 
+
+
+# library(cmprsk)
+# library(survival)
+# n <- 5000
+# E <- rbinom(n, 1, 0.2)
+# X <- rnorm(n, E, 1)
+# Y <- rexp(n, exp(0.5 * X))
+# R <- rexp(n, exp(0.5 * X))
+# C <- rexp(n, exp(0.5 * X))
+# E <- as.factor(E)
+# time <- pmin(Y, R, C)
+# summary(time)
+# status <- ifelse(time == Y, 1, ifelse(time == R, 2, 0))
+# table(status)
+# str(E)
+# mm <- model.matrix(~X+E-1)
+# head(mm)
+# str(mm)
+# fit <- crr(time, status, X, failcode = 2, cencode = 0)
+# list("coefficient" = fit$coef,
+#      "covariance" = fit$var,
+#      "deviance" = - 2 * fit$loglik,
+#      "df" = length(fit$coef),
+#      "scale" = 1)
+
+
 #' @rdname fit_model
 fit_model.ah <- function(method, Y, X, ...) {
   if (! survival::is.Surv(Y)) {
