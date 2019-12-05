@@ -297,6 +297,11 @@ print.method_obj <- function(x, exclude = c("id", "tol", "call", "dist"), ...) {
 #'   a single variable. \code{fullAnalysis = FALSE} will result in different
 #'   behavior for different \code{methods}, so for a more detailed discussion of
 #'   concrete effects see the help page for the chooosen \code{method}.
+#' @param progress if \code{TRUE} a progress bar will be printed.
+#' @param exclude a list of models to exclude from the analysis, and as standard
+#'   it is \code{NULL}. Each entry of an exclude list must be a vector of
+#'   integers which indicates the column numbers of the covariates to be
+#'   excluded.
 #' @param ... additional arguments carried to the
 #'   \code{\link{plausible_predictor_test}}.
 #'
@@ -373,7 +378,8 @@ print.method_obj <- function(x, exclude = c("id", "tol", "call", "dist"), ...) {
 
 # ICP ==========================================================================
 ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
-                level = 0.05, maxNoVariables = 8, fullAnalysis = TRUE, ...) {
+                level = 0.05, maxNoVariables = 8, fullAnalysis = TRUE,
+                progress = FALSE, exclude = NULL, ...) {
 
 
   method <- method_obj(model = model, method = method, ...)
@@ -452,6 +458,20 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
                                             simplify = FALSE)}),
                       recursive = FALSE)
   test_list <- unlist(list(0, test_list), recursive = FALSE)
+  if (! is.null(exclude)) {
+    if (! is.list(exclude)) {
+      stop("'exclude' must be NULL or a list of models to exclude. ",
+           "See documentation of 'ICP' for instructions on how to specify ",
+           "an 'exclude' list.")
+    }
+    # Remove the excluded models
+    sub_test_list <- which(! unlist(lapply(test_list, function(t) {
+      any(sapply(exclude, function(e) {
+        ifelse(length(t) == length(e), all(t == e), FALSE)
+        }))
+      })))
+    test_list <- test_list[sub_test_list]
+  }
 
   # LOOP THROUGH TEST_LIST -----------------------------------------------------
 
@@ -459,6 +479,11 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
   smallest_possible_pvalue <- .Machine$double.eps
   res_model <- data.frame(models = character(), pval = numeric())
   s <- 1L
+  if (progress) {
+    pb <- txtProgressBar(min = 0, max = 100,
+                         width = 0.7 * getOption("width"),
+                         style = 3)
+  }
 
   # loop through sets
   while (s <= length(test_list)) {
@@ -488,6 +513,10 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
         }
       }
     }
+
+    if (progress) {
+      setTxtProgressBar(pb, value = (s/length(test_list)) * 100)
+    }
     s <- s + 1L
   }
 
@@ -499,6 +528,7 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
       level = level,
       smallest_possible_pvalue = smallest_possible_pvalue,
       model.analysis = res_model,
+      tested.list = test_list,
       method = method
       ),
     class = "ICP"
@@ -525,7 +555,7 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
     output$accepted.model <- res_acc
 
     # finde variable 'p-values'
-    if (fullAnalysis) {
+    if (fullAnalysis & is.null(exclude)) {
       if (!any(res_model$pval >= level)) { # TODO or is it res_acc == "Empty"
         pval_var <- rep(1, length.out = ncol(X))
       } else {
@@ -539,8 +569,9 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
       output$variable.analysis <- res_var
     }
   }
-
-
+  if (progress) {
+    close(pb)
+  }
   return(output)
 }
 

@@ -13,6 +13,8 @@ ICP(
   level = 0.05,
   maxNoVariables = 8,
   fullAnalysis = TRUE,
+  progress = FALSE,
+  exclude = NULL,
   ...
 )
 }
@@ -52,6 +54,13 @@ means that the method will no longer be able to estime the significanse of
 a single variable. \code{fullAnalysis = FALSE} will result in different
 behavior for different \code{methods}, so for a more detailed discussion of
 concrete effects see the help page for the chooosen \code{method}.}
+
+\item{progress}{if \code{TRUE} a progress bar will be printed.}
+
+\item{exclude}{a list of models to exclude from the analysis, and as standard
+it is \code{NULL}. Each entry of an exclude list must be a vector of
+integers which indicates the column numbers of the covariates to be
+excluded.}
 
 \item{...}{additional arguments carried to the
 \code{\link{plausible_predictor_test}}.}
