@@ -481,7 +481,7 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
   s <- 1L
   if (progress) {
     pb <- txtProgressBar(min = 0, max = 100,
-                         width = 0.7 * getOption("width"),
+                         width = 0.8 * getOption("width"),
                          style = 3)
   }
 

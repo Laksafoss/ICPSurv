@@ -74,7 +74,16 @@ fit_model.glm <- function(method, Y, X, ...) {
   if (is.null(method$family)) {
     stop("For model = 'glm' there must be specified a family in the method object")
   }
-  fit <- stats::glm(Y ~ ., data = data.frame(Y,X), family = method$family)
+  fit <- suppressWarnings(stats::glm(Y ~ .,
+                                     data = data.frame(Y,X),
+                                     family = method$family))
+  #coef <- fit$coefficients
+  #cov <- stats::vcov(fit)
+  #if (any(is.na(coef))) {
+  #  index <- which(in.na(coef))
+  #  coef[index] <- rep(0, length(index))
+  #  cov[,index] <- cov[index,] <- rep(0, length(index))
+  #}
   return(list("coefficients" = fit$coefficients,
               "covariance" = stats::vcov(fit),
               "deviance" = fit$deviance,
