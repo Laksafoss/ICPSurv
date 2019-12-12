@@ -14,7 +14,7 @@ IMR(M, method = "BS", ...)
 
   The default method is \code{BS}, which fits a b-spline and reports the
   curvature as an invariance score. For more detailes see
-  \code{\link{construct_anaysis.BS}}.}
+  \code{\link{construct_analysis.BS}}.}
 
 \item{...}{additional arguments to be passed to the
 \code{\link{construct_analysis}} function}

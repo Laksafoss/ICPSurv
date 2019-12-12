@@ -281,14 +281,20 @@ intersect_CR.QCLP <- function(method, models, alpha, fullAnalysis = TRUE, ...) {
 
 #' @rdname intersect_CR
 intersect_marginal_rectangle <- function(models, alpha) {
-  len <- sapply(models, function(m) {length(m$coefficients)})
-  if (any(len != len[1])) { # is this the best thing to do ???
-    return(FALSE)
-  }
-  q <- stats::qchisq(1 - alpha, df = length(len[1]))
+  all_names <- Reduce(union,
+                      lapply(models, function(m) {names(m$coefficients)}))
+  q <- stats::qchisq(1 - alpha, df = length(all_names))
   endpoints <- sapply(models, function(m) {
     L <- m$coefficients - sqrt(q) * sqrt(diag(m$covariance))
     U <- m$coefficients + sqrt(q) * sqrt(diag(m$covariance))
+    if (! identical(names(m$coefficients), all_names)) {
+      cat("\n\n")
+      mis <- which(! all_names %in% names(m$coefficients)) # are they always in the right order ????
+      for (i in seq_along(mis)) {
+        L <- append(L, -Inf, after = mis[i] - 1)
+        U <- append(U, Inf, after = mis[i] - 1)
+      }
+    }
     return(rbind(L,U))
   })
   endpoint_test <- sapply(seq_len(nrow(endpoints) / 2), function(u) {

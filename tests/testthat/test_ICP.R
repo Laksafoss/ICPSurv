@@ -130,6 +130,16 @@ test_that("CR lm", {
             "ICP")
 })
 
+test_that("CR unobserved factors in envirs", {
+  X2 <- sapply(E, function(e) {sample(seq_len(e + 2), 1)})
+  Y <- rnorm(n, X, 1)
+  expect_is(ICP(Y, X = data.frame(X1 = X, X2 = factor(X2)), E,
+                model = "lm",
+                method = "CR", solver = "marginal", splits = "all",
+                level = 0.05),
+            "ICP")
+})
+
 test_that("CR glm", {
   Y <- rpois(n, exp(X))
   expect_is(ICP(Y, X, E,

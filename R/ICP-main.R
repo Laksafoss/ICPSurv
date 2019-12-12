@@ -246,21 +246,24 @@ print.method_obj <- function(x, exclude = c("id", "tol", "call", "dist"), ...) {
 #'
 #' @param Y an object describing the response variable. \code{Y} will be passed
 #'   to the \code{\link{plausible_predictor_test}} for analyzing.
-#' @param X a matrix, data.frame or vector describing the covariates
+#'
+#' @param X a matrix, data.frame or vector describing the covariates.
+#'
 #' @param E a vector, matrix or data frame describing the environments.
+#'
 #' @param model a character which must correspont to a \code{\link{fit_model}}
 #'   or \code{\link{fit_nonparam_model}} method. In this package the model types
 #'   implemented are \code{\link[=fit_model.lm]{lm}},
 #'   \code{\link[=fit_model.glm]{glm}}, \code{\link[=fit_model.ph]{ph}},
-#'   \code{\link[=fit_model.ah]{ah} and \code{\link[=fit_model.hazard]{hazard}},
+#'   \code{\link[=fit_model.ah]{ah}} and \code{\link[=fit_model.hazard]{hazard}},
 #'   but the user may specify new methods for the generic functions
 #'   \code{\link{fit_model}} or \code{\link{fit_nonparam_model}} for more
 #'   \code{model} options.
 #'
 #'   If \code{model} is equal to \code{glm} then a \code{family} must be
 #'   specified in \code{...}. For more details on valid family inputs see
-#'   \code{\ink[stats]{family}}. If \code{family} is not specified, then it is
-#'   set to "gaussian". Note that (\code{model = glm, \code{family = "gaussian"}})
+#'   \code{\link[stats]{family}}. If \code{family} is not specified, then it is
+#'   set to "gaussian". Note that (\code{model = glm, family = "gaussian"})
 #'   is synonymous with (\code{model = lm}).
 #'
 #'   Is \code{model} is equal to \code{hazard} a \code{link} or \code{dist} must
@@ -272,6 +275,7 @@ print.method_obj <- function(x, exclude = c("id", "tol", "call", "dist"), ...) {
 #'   synonymous with \code{model} equal to \code{ph}, and \code{link} equal to
 #'   \code{identity} or \code{additive} is synonymous with \code{model} equal
 #'   to \code{ah}.
+#'
 #' @param method a character which must correspond to a
 #'   \code{\link{plausible_predictor_test}} method. In this package the methods
 #'   \code{\link[=plausible_predictor_test.EnvirIrrel]{EnvirIrrel}},
@@ -480,9 +484,9 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
   res_model <- data.frame(models = character(), pval = numeric())
   s <- 1L
   if (progress) {
-    pb <- txtProgressBar(min = 0, max = 100,
-                         width = 0.8 * getOption("width"),
-                         style = 3)
+    pb <- utils::txtProgressBar(min = 0, max = 100,
+                                width = 0.8 * getOption("width"),
+                                style = 3)
   }
 
   # loop through sets
@@ -515,7 +519,7 @@ ICP <- function(Y, X, E = NULL, model = "lm", method = "EnvirIrrel",
     }
 
     if (progress) {
-      setTxtProgressBar(pb, value = (s/length(test_list)) * 100)
+      utils::setTxtProgressBar(pb, value = (s/length(test_list)) * 100)
     }
     s <- s + 1L
   }

@@ -8,6 +8,8 @@ Y <- rexp(n, exp(- 1.5 * X$X1))
 test_that("Models not comparable", {
   fit1 <- survival::coxph(survival::Surv(Y) ~ X1, data = X)
   fit2 <- survival::coxph(survival::Surv(Y) ~ X2, data = X, subset = seq_len(n - 2))
+  haz <- survival::basehaz(fit1)
+  length(haz$time)
   expect_error(IMR(list(fit1 = fit1, fit2)),
                paste0("The models are not comparable",
                       " - the respons variables are not identical."))

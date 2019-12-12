@@ -22,9 +22,34 @@ ICP(
 \item{Y}{an object describing the response variable. \code{Y} will be passed
 to the \code{\link{plausible_predictor_test}} for analyzing.}
 
-\item{X}{a matrix, data.frame or vector describing the covariates}
+\item{X}{a matrix, data.frame or vector describing the covariates.}
 
 \item{E}{a vector, matrix or data frame describing the environments.}
+
+\item{model}{a character which must correspont to a \code{\link{fit_model}}
+  or \code{\link{fit_nonparam_model}} method. In this package the model types
+  implemented are \code{\link[=fit_model.lm]{lm}},
+  \code{\link[=fit_model.glm]{glm}}, \code{\link[=fit_model.ph]{ph}},
+  \code{\link[=fit_model.ah]{ah}} and \code{\link[=fit_model.hazard]{hazard}},
+  but the user may specify new methods for the generic functions
+  \code{\link{fit_model}} or \code{\link{fit_nonparam_model}} for more
+  \code{model} options.
+
+  If \code{model} is equal to \code{glm} then a \code{family} must be
+  specified in \code{...}. For more details on valid family inputs see
+  \code{\link[stats]{family}}. If \code{family} is not specified, then it is
+  set to "gaussian". Note that (\code{model = glm, family = "gaussian"})
+  is synonymous with (\code{model = lm}).
+
+  Is \code{model} is equal to \code{hazard} a \code{link} or \code{dist} must
+  be specified in \code{...}. A user specified \code{dist} allowes for the
+  most flexibility. The format of a \code{dist} list is descibed in
+  \code{\link[survival]{survreg.distributions}}. Possible \code{link} values
+  include \code{log}, \code{identity}, \code{proportional} and \code{additive}.
+  Howbeit, \code{link} equal to \code{log} or \code{proportional} is
+  synonymous with \code{model} equal to \code{ph}, and \code{link} equal to
+  \code{identity} or \code{additive} is synonymous with \code{model} equal
+  to \code{ah}.}
 
 \item{method}{a character which must correspond to a
 \code{\link{plausible_predictor_test}} method. In this package the methods
