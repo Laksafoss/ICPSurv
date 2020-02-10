@@ -7,30 +7,85 @@
 IMR(M, method = "BS", ...)
 }
 \arguments{
-\item{M}{a list of models.}
+\item{M}{A list of models. The models may be the result of a call to
+\code{\link[survival]{coxph}}, \code{\link[survival]{aareg}},
+\code{\link[timereg]{timecox}}, \code{\link[timereg]{aalen}} and
+\code{\link[timereg]{cox.aalen}}.}
 
-\item{method}{the method used for calculating invariance scores. Note that
-  the different methods of calculations are not necessarily comparable.
+\item{method}{The method used for calculating invariance scores. At the
+moment only two ranking methods have been implemented, namely the \code{BS}
+and \code{rss} method. The default method is \code{BS}, which fits a
+b-spline and reports the curvature as an invariance score.}
 
-  The default method is \code{BS}, which fits a b-spline and reports the
-  curvature as an invariance score. For more detailes see
-  \code{\link{construct_analysis.BS}}.}
-
-\item{...}{additional arguments to be passed to the
-\code{\link{construct_analysis}} function}
+\item{...}{additional arguments to be passed to the internal
+\code{construct_analysis} functions.}
 }
 \value{
-\code{IMR} returns a \code{\link[base]{data.frame}} of
-  \code{\link[base]{class}}"\code{IMR}". The \code{\link[base]{data.frame}}
-  has two columns:
-  \describe{
-    \item{model}{The model.}
-    \item{roughness}{invariance score}
-  }
+\code{IMR} returns an object of \code{\link[base]{class}} "\code{IMR}"
+with the following components:
+\item{ranking }{ A data.frame summarizing the findings. For detailes on how
+to interpret this see the method specific details above.}
+\item{results }{ A list with the detailed results of the analysis.}
+\item{method }{ A list with the \code{method}, a data.frame
+\code{method_expanded} with a more detailed summary of the called method,
+the character \code{critical} giving a one line interpretation guide to the
+\code{ranking} data.frame. This list may also contain other method specific
+components.}
+\item{call }{ The matched call.}
 }
 \description{
-A method for ranking models based on invariance.
+A method for ranking models based on an invariance score.
 }
 \details{
-LONG DESCRIPTION
+The \code{IMR} function takes a list of fitted models as input and computes
+an invariance ranking. The invariance scoring method is specified via
+\code{method}. It is the users responsibility to input comparable models in
+\code{M} and choose a suiteble ranking scheem via \code{method}; only
+rudimentery sanity check of the inputted models in \code{M} is conducted.
+
+At the moment the \code{IMR} function only takes hazard models as input, and
+only two ranking methods have been implementd, namely the \code{BS} and the
+\code{rss} methods:
+
+\strong{The \code{BS} method:}
+For each model a basis spline is fitted to the cumulative coefficients
+and the integrated curvature is reported as a measure of invariance. Before
+the spline is fitted the cumulative coefficients are normalized. A smaller
+score is evidence of a more invariant model.
+
+\strong{The \code{rss} method:}
+For each model the corresponding invariant model is found and the residual
+square error is found and reported as a measure of invariance. Before the
+invariant model and residual square error is found the cumulative
+coefficients are normalized. A smaller score is evidence of a more invariant
+model.
+}
+\examples{
+## Generate Data
+n <- 1000
+E <- sample(4L, n, replace = TRUE)
+X <- data.frame(X1 = rnorm(n, 2 * E, 1),
+                X2 = rnorm(n, 2 * (E == 1) + 5 * (E == 4)  , 1),
+                X3 = rbinom(n, 1, 0.7))
+Y <- rexp(n, exp(4 - 0.6 * X$X1 + 0.4 * X$X2))
+C <- rexp(n, exp(0.5))
+time <- pmin(Y, C)
+status <- time == Y
+# Note that X1 and X2 are the true causal predictors
+
+## Fit Models
+m1 <- survival::coxph(survival::Surv(time, status) ~ X1, data = X)
+m2 <- survival::coxph(survival::Surv(time, status) ~ X2, data = X)
+m3 <- survival::coxph(survival::Surv(time, status) ~ X3, data = X)
+m12 <- survival::coxph(survival::Surv(time, status) ~ X1 + X2, data = X)
+m13 <- survival::coxph(survival::Surv(time, status) ~ X1 + X3, data = X)
+
+
+# Ranking via Basis Splines
+IMR(list(m1, m2, m3, m12, m13), method = "BS")
+
+# Ranking via Residual Square Error
+IMR(list(m1, m2, m3, m12, m13), method = "rss")
+
+
 }

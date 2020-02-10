@@ -1,12 +1,15 @@
 Package: ICPSurv
 Type: Package
 Title: Invariant Causal Prediction for Survival Data
-Version: 0.0.0.9003
-Authors@R: person("Anna", "Laksafoss", email = "vbs190@alumni.ku.dk",
-                  role = c("aut", "cre"))
-Description: The description of a package is usually long,
-    spanning multiple lines. The second and subsequent lines
-    should be indented, usually with four spaces.
+Version: 0.1
+Author: Anna Laksafoss
+Maintainer: Anna Laksafoss <vbs190@alumni.ku.dk>
+Description: Methods for estimation of causal predictors and identification of 
+    invariant models for a target variable. Using heterogeneous data from 
+    different (possibly unknown) environments the methods identify invariant 
+    models and use these to make causal inference. The methods are suited for 
+    target variables that may be described by a linear, generalized linear or 
+    hazard model. 
 Depends: R (>= 3.1.0)
 License: GPL
 Encoding: UTF-8
@@ -15,7 +18,7 @@ Imports:
     survival (>= 2.41-3),
     timereg (>= 1.9.2),
     fda (>= 2.4.8),
-    dHSIC (>= 2.0)
+    fellov (>= 0.1)
 Suggests: 
     ggplot2 (>= 3.1.0),
     testthat,

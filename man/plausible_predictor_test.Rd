@@ -3,18 +3,18 @@
 \name{plausible_predictor_test}
 \alias{plausible_predictor_test}
 \alias{plausible_predictor_test.default}
-\alias{plausible_predictor_test.nonparam}
-\alias{plausible_predictor_test.EnvirIrrel}
+\alias{plausible_predictor_test.TimeVar}
+\alias{plausible_predictor_test.EnvirRel}
 \alias{plausible_predictor_test.CR}
-\title{Test for plausible predictors}
+\title{Internal Test for plausible predictors}
 \usage{
 plausible_predictor_test(method, Y, X, ...)
 
 \method{plausible_predictor_test}{default}(method, Y, X, ...)
 
-\method{plausible_predictor_test}{nonparam}(method, Y, X, level, Bonferroni = TRUE, ...)
+\method{plausible_predictor_test}{TimeVar}(method, Y, X, level, Bonferroni = TRUE, ...)
 
-\method{plausible_predictor_test}{EnvirIrrel}(method, Y, X, E, ...)
+\method{plausible_predictor_test}{EnvirRel}(method, Y, X, E, ...)
 
 \method{plausible_predictor_test}{CR}(
   method,
@@ -33,26 +33,27 @@ fitting procedure and the testing method. When used in the
 \code{\link{ICP}} function the method object is inherited from the
 \code{\link{ICP}} function.}
 
-\item{Y}{a vector or \code{\link[survival]{Surv}} object describing the target variable. The \code{Y}
-will be passed to the \code{\link{fit_model}} function for fitting, and it
-is therefor important that the class of \code{Y} is understood by the
-regression method used in \code{\link{fit_model}}. So if \code{method}
-specifies that a cox regression is to be used, then \code{Y} must be a
+\item{Y}{a vector or \code{\link[survival]{Surv}} object describing the
+target variable. The \code{Y} will be passed to the \code{\link{fit_model}}
+function for fitting, and it is therefor important that the class of
+\code{Y} is understood by the regression method used in
+\code{\link{fit_model}}. So if \code{method} specifies that a cox
+regression is to be used, then \code{Y} must be a
 \code{\link[survival]{Surv}} object.}
 
-\item{X}{a matrix, vector or data frame describing the covariates. WRITE
-ABOUT \code{X} WHEN TESTING THE EMPTY SET !!!!}
+\item{X}{a matrix, vector or data frame describing the covariates.}
 
-\item{...}{TODO}
+\item{...}{additional arguments to be passed to lower level functions.}
 
 \item{level}{the alpha level of testing, but it is only relevant if the
 method is iterative \emph{and} \code{fullAnalysis} is \code{FALSE}.}
 
-\item{Bonferroni}{TODO}
+\item{Bonferroni}{if \code{TRUE} Bonferroni correcting will be used if relevant.}
 
 \item{E}{a vector describing the environmants}
 
-\item{fullAnalysis}{TODO !!!!}
+\item{fullAnalysis}{if \code{TRUE} a p-value must be retured. If \code{FALSE}
+the method is 'allowed' to only return 0/1 for hypothesis rejected/accepted.}
 }
 \value{
 Returns a p-value, i.e. a number between 0 and 1, to be used in the
@@ -82,11 +83,8 @@ see the references.
 
 As the \code{plausible_predictor_test} is a hypothesis test it must return a
 p value, that is a number between 0 and 1.
-
-The \code{plausible_predictor_test}
-
-PERHAPS A DESCRIPTION OF THE TACHNICALITIES OF \code{method} AND \code{Y} ?!
 }
 \seealso{
 \code{\link{ICP}} for the full wrapper function.
 }
+\keyword{internal}

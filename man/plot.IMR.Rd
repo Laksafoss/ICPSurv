@@ -4,27 +4,62 @@
 \alias{plot.IMR}
 \title{Plot IMR Analysis}
 \usage{
-\method{plot}{IMR}(x, y = NULL, which = seq_along(x$results), ...)
+\method{plot}{IMR}(x, y = NULL, which = seq_along(x$results), ncol = 2, ...)
 }
 \arguments{
-\item{x}{TODO}
+\item{x}{An \code{\link{IMR}} object.}
 
-\item{y}{TODO}
+\item{y}{\code{NULL}. Not used at the moment.}
 
-\item{which}{TODO}
+\item{which}{Which of the analyzed models to display.}
 
-\item{...}{TODO}
-}
-\value{
-DESCRIPTION OF RETURNED
+\item{ncol}{Number of columns is plotting grid.}
+
+\item{...}{additional arguments to be passed to lower level functions.}
 }
 \description{
-THIS FUNCTION IS DEFINITELY NOT DONE !!
+A plotting method for \code{\link{IMR}} objects.
 }
 \details{
-LONG DESCRIPTION OF PLOTTER FUNCTION
+Multiple plots (selectable by \code{which}) are created. The type of plot
+depend on method of the inputted \code{\link{IMR}} object. At the moment the
+following plotting methods are avaible:
+
+\strong{The \code{BS} method plotted:} The normalized cumulative coefficients
+are plotted along with the fitted basis spline.
+
+\strong{The \code{rss} method plotted:} The normalized cumulative
+coefficients are plotted along with the invariant model and residuals.
 }
 \examples{
-# Make super good example
+## Generate Data
+n <- 1000
+E <- sample(4L, n, replace = TRUE)
+X <- data.frame(X1 = rnorm(n, 2 * E, 1),
+                X2 = rnorm(n, 2 * (E == 1) + 5 * (E == 4), 1),
+                X3 = rbinom(n, 1, 0.5))
+Y <- rexp(n, exp(4 - 0.6 * X$X1 + 0.4 * X$X2))
+C <- rexp(n, exp(0.5))
+time <- pmin(Y, C)
+status <- time == Y
+# Note that X1 and X2 are true causal predictors
 
+## Fit Models
+m1 <- survival::coxph(survival::Surv(time, status) ~ X1, data = X)
+m2 <- survival::coxph(survival::Surv(time, status) ~ X2, data = X)
+m3 <- survival::coxph(survival::Surv(time, status) ~ X3, data = X)
+m12 <- survival::coxph(survival::Surv(time, status) ~ X1 + X2, data = X)
+m13 <- survival::coxph(survival::Surv(time, status) ~ X1 + X3, data = X)
+
+## Ranking via Basis Splines
+BS <- IMR(list(m1, m2, m3, m12, m13), method = "BS")
+plot(BS, ncol = 3)
+plot(BS, which = c(1,2,3), ncol = 3) # the 1 variable models
+
+## Ranking via Residual Square Error
+RSS <- IMR(list(m1, m2, m3, m12, m13), method = "rss")
+plot(RSS, ncol = 3)
+}
+\seealso{
+See \code{\link{IMR}} for the construction of an \code{IMR} object.
 }

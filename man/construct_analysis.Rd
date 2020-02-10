@@ -4,37 +4,33 @@
 \alias{construct_analysis}
 \alias{construct_analysis.default}
 \alias{construct_analysis.BS}
-\title{Internal Method for Constructing IMR Analysis}
+\title{Internal Methods for Constructing IMR Analyses}
 \usage{
-construct_analysis(mc, data, ...)
-
 \method{construct_analysis}{default}(mc, data, ...)
 
 \method{construct_analysis}{BS}(mc, data, norder, knots, L, ...)
 }
 \arguments{
-\item{mc}{TODO}
+\item{mc}{the classes of the fitted models to be analyzed via the constructed
+analysis funciton.}
 
-\item{data}{TODO}
+\item{data}{data from the first fitted model.}
 
-\item{...}{TODO}
-
-\item{norder}{TODO}
-
-\item{knots}{TODO}
-
-\item{L}{TODO}
+\item{...}{additional arguments.}
 }
 \value{
-a function that has input \code{Y}.
+An analysis constructor must return the following in a list
+\item{analysis }{ a function with exactly one input, \code{data}, which has the
+same format as the inputted \code{data}.}
+\item{method }{ a method list with info used in the \code{\link{plot.IMR}}
+and \code{print.IMR} functions.}
 }
 \description{
 An internal method used in the \code{\link{IMR}} for construction of the
 model analysis.
 }
 \details{
-LONG DESCRIPTION
+\code{construct_analysis} is a generic function. The methods should
+correspond to the inputted \code{method} in \code{\link{IMR}}.
 }
-\seealso{
-\code{\link{IMR}}
-}
+\keyword{internal}

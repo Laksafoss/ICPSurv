@@ -12,32 +12,29 @@
 \alias{fit_nonparam_model.default}
 \alias{fit_nonparam_model.ph}
 \alias{fit_nonparam_model.ah}
-\alias{fit_nonparam_model.hazard}
 \title{Internal regression functions}
 \usage{
-fit_model(method, Y, X, ...)
+fit_model(method, Y, X, subset, ...)
 
-\method{fit_model}{default}(method, Y, X, ...)
+\method{fit_model}{default}(method, Y, X, subset = NULL, ...)
 
-\method{fit_model}{lm}(method, Y, X, ...)
+\method{fit_model}{lm}(method, Y, X, subset = NULL, ...)
 
-\method{fit_model}{glm}(method, Y, X, ...)
+\method{fit_model}{glm}(method, Y, X, subset = NULL, ...)
 
-\method{fit_model}{ph}(method, Y, X, ...)
+\method{fit_model}{ph}(method, Y, X, subset = NULL, ...)
 
-\method{fit_model}{ah}(method, Y, X, ...)
+\method{fit_model}{ah}(method, Y, X, subset = NULL, ...)
 
-\method{fit_model}{hazard}(method, Y, X, ...)
+\method{fit_model}{hazard}(method, Y, X, subset = NULL, ...)
 
-fit_nonparam_model(method, Y, X, ...)
+fit_nonparam_model(method, Y, X, subset, ...)
 
-\method{fit_nonparam_model}{default}(method, Y, X, ...)
+\method{fit_nonparam_model}{default}(method, Y, X, subset = NULL, ...)
 
-\method{fit_nonparam_model}{ph}(method, Y, X, id = NULL, ...)
+\method{fit_nonparam_model}{ph}(method, Y, X, subset = NULL, id = NULL, ...)
 
-\method{fit_nonparam_model}{ah}(method, Y, X, id = NULL, ...)
-
-\method{fit_nonparam_model}{hazard}(method, Y, X, id = NULL, ...)
+\method{fit_nonparam_model}{ah}(method, Y, X, subset = NULL, id = NULL, ...)
 }
 \arguments{
 \item{method}{a \strong{method object} created by the
@@ -46,49 +43,64 @@ fit_nonparam_model(method, Y, X, ...)
 \item{Y}{a vector or \code{\link[survival]{Surv}} object describing the
 target variable.}
 
-\item{X}{a matrix, vector or data frame describing the covariates. WRITE
-ABOUT \code{X} WHEN TESTING THE EMPTY SET !!!!}
+\item{X}{a matrix, vector or data frame describing the covariates.}
 
-\item{...}{additional arguments. At the moment only the additional argument
-\code{const} is allowed.}
+\item{subset}{an optional vector specifying a subset of observations to be
+used in the fitting process.}
 
-\item{id}{TODO}
+\item{...}{additional arguments to be passed to lower level functions.}
+
+\item{id}{for timevarying covariates the variable must associate each record
+with the id of a subject.}
 }
 \value{
-Depending on \code{method} the \code{fit_model} function returns
-  different lists. If \code{method$method} \eqn{!=} "\code{ConstTime}" the output list must
-  contain the following
-  \describe{
-    \item{coefficients}{the estimated regression coefficients.}
-    \item{covariance}{the estimated covariance matrix.}
-    \item{deviance}{the deviance, i.e. \eqn{- 2 * LogLik}, where \eqn{LogLik}
-      is the log likelihood evaluated in the reported estimators.}
-    \item{df}{degrees of freedom}
-  }
+Both the \code{fit_model} and \code{fit_nonparam_model} methods return a list.
 
-  If \code{method} has class "\code{ConstTime}" then the output list contains
-  ANNA: DO WE ALWAYS RETURN ALL 4 ??? If we don't need pvals then we may set
-  n.sim = 0
+\code{fit_model} methods must return the following:
+  \item{\code{coefficients} }{ The estimated regression coefficients.}
+  \item{\code{deviance} }{ The deviance of the fitted model, i.e. \eqn{-2 log(likelihood)}}
+  \item{\code{df} }{ Degrees of freedom in fitted model.}
+  \item{\code{scale} }{ Scale.}
 
-  \describe{
-    \item{cum}{cumulative timevarying regression coefficients estimated within
-      the timeinterval with observations.}
-    \item{var.cum}{rhe martingale based pointwise variance estimated for
-      cumulatives.}
-    \item{pval.testBeqC}{Kolmogorov-Smirnov test p-values based on resampling.}
-    \item{pval.testBeqC.is}{Carmer von Mises test p-values based on resampling.}
-   }
+
+\code{fit_nonparam_model} methods return the following:
+  \item{\code{cum} }{ Cumulative regression coefficient.}
+  \item{\code{cum.var} }{ Cumulative variance of regression effects.}
+  \item{\code{sup} }{ Kolmogorov–Smirnov test (only returned if \code{n.sim} not zero).}
+  \item{\code{int} }{ Cramér–von Mises test (only returned if \code{n.sim} not zero).}
 }
 \description{
 The \code{fit_model} function is a generic function meant for internal use in
 the \code{ICPSurv} package, and as such it is not exported to the namespace.
 }
 \details{
-MORE DESCRIPTION
+The \code{fit_model.X} and \code{fit_nonparam_model.X} functions are internal
+fitter functions. They are usually all quite simple as their main
+functionality apart from fitting the model is ensureing that the output
+is compatible with the \code{\link{plausible_predictor_test}}s.
 
-MENTION SPECIAL CASE COX AND AALEN NOT CONST.
+All \code{fit_model} methods must return the following:
+\itemize{
+  \item{\code{coefficients} }{ The estimated regression coefficients.}
+  \item{\code{deviance} }{ The deviance of the fitted model, i.e. \eqn{-2 log(likelihood)}}
+  \item{\code{df} }{ Degrees of freedom in fitted model.}
+  \item{\code{scale} }{ Scale.}
+}
+
+All \code{fit_nonparam_model} methods must return the following:
+\itemize{
+  \item{\code{cum} }{ Cumulative regression coefficient.}
+  \item{\code{cum.var} }{ Cumulative variance of regression effects.}
+}
+Morover if \code{n.sim} in the \code{method} is non-zero then the
+\code{fit_nonparam_model} also returnes the following
+\itemize{
+  \item{\code{sup} }{ Kolmogorov–Smirnov test.}
+  \item{\code{int} }{ Cramér–von Mises test.}
+}
 }
 \seealso{
 \code{\link{ICP}}, \code{\link{plausible_predictor_test}} for the
   full wrapper functions.
 }
+\keyword{internal}

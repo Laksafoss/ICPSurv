@@ -1,21 +1,28 @@
 
-#' Internal Method for Constructing IMR Analysis
+#' Internal Methods for Constructing IMR Analyses
 #'
 #' An internal method used in the \code{\link{IMR}} for construction of the
 #' model analysis.
 #'
-#' LONG DESCRIPTION
+#' \code{construct_analysis} is a generic function. The methods should
+#' correspond to the inputted \code{method} in \code{\link{IMR}}.
 #'
-#' @param mc TODO
-#' @param data TODO
-#' @param norder TODO
-#' @param knots TODO
-#' @param L TODO
-#' @param ... TODO
+#' @param mc the classes of the fitted models to be analyzed via the constructed
+#' analysis funciton.
+#' @param data data from the first fitted model.
+#' @param ... additional arguments.
 #'
-#' @seealso \code{\link{IMR}}
+#' @return An analysis constructor must return the following in a list
+#' \item{analysis }{ a function with exactly one input, \code{data}, which has the
+#' same format as the inputted \code{data}.}
+#' \item{method }{ a method list with info used in the \code{\link{plot.IMR}}
+#' and \code{print.IMR} functions.}
 #'
-#' @return a function that has input \code{Y}.
+#' @keywords internal
+#' @name construct_analysis
+NULL
+
+
 construct_analysis <- function(mc, data, ...) {
   UseMethod("construct_analysis", mc)
 }
