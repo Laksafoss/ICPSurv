@@ -17,8 +17,7 @@ LazyData: true
 Imports:
     survival (>= 2.41-3),
     timereg (>= 1.9.2),
-    fda (>= 2.4.8),
-    fellov (>= 0.1)
+    fda (>= 2.4.8)
 Suggests: 
     ggplot2 (>= 3.1.0),
     testthat,
