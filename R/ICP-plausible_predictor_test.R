@@ -296,11 +296,11 @@ intersect_ellipsoid_pair <- function(M1, M2, alpha){
 
   if (any(!is.finite(C1))) {
     ind <- which(!is.finite(C1))
-    C1[ind] <- max(C1[-ind]) * 100000
+    C1[ind] <- max(C1[-ind], 1) * 100000
   }
   if (any(!is.finite(C2))) {
     ind <- which(!is.finite(C2))
-    C2[ind] <- max(C2[-ind]) * 100000
+    C2[ind] <- max(C2[-ind], 1) * 100000
   }
 
   m <- length(c1)
@@ -384,14 +384,8 @@ intersect_ellipsoid <- function(models) { # should return number
     var <- m$covariance
     if (any(!is.finite(var))) {
       ind <- which(!is.finite(var))
-      var[ind] <- max(var[-ind]) * 1000
+      var[ind] <- max(var[-ind], 1) * 1000
     }
-    #if (any(diag(var) == 0)) {
-    #  print(var)
-    #  ind <- which(diag(var) == 0)
-    #  diag(var) <- min(diag(var)[-ind]) * 0.01
-    #  print(var)
-    #}
     rr <- rcond(var)
     if (rr < 2e-15) {
       add <- diag(diag(var) * 0.01, ncol(var))
@@ -486,10 +480,6 @@ intersect_ellipsoid <- function(models) { # should return number
       } else {
         invhx <- solve(hg)
       }
-      #invhx <- tryCatch(solve(hg),
-      #                  error = function(e) {
-      #                    solve(hg + diag(diag(hg) * 0.001, nrow(hg)))
-      #                  })
       delta <- - invhx %*% gx
       lambda <- - t(gx) %*% delta
 
