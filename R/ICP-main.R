@@ -112,7 +112,7 @@
 #'   will be rejected. If the model is correct, this will happen with a
 #'   probability of gof. This option protects again making statements when the
 #'   model is obviously not suitable for the data.
-#' @param maxNoVariables The maximal number of variables to pre-select (choosing
+#' @param maxNoVariables The maximal subset size (choosing
 #'   smaller values saves computational resources but increases approximation
 #'   error).
 #' @param fullAnalysis If \code{TRUE} p-values for all null hypotheses will be

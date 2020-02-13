@@ -10,17 +10,17 @@ Description: Methods for estimation of causal predictors and identification of
     models and use these to make causal inference. The methods are suited for 
     target variables that may be described by a linear, generalized linear or 
     hazard model. 
-Depends: R (>= 3.1.0)
+Depends: R (>= 3.6.0)
 License: GPL
 Encoding: UTF-8
 LazyData: true
 Imports:
-    survival (>= 2.41-3),
-    timereg (>= 1.9.2),
+    survival (>= 3.1-8),
+    timereg (>= 1.9.4),
     fda (>= 2.4.8)
 Suggests: 
     testthat,
     knitr,
     rmarkdown
-RoxygenNote: 7.0.0
+RoxygenNote: 7.0.2
 VignetteBuilder: knitr
