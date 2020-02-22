@@ -10,7 +10,7 @@ Description: Methods for estimation of causal predictors and identification of
     models and use these to make causal inference. The methods are suited for 
     target variables that may be described by a linear, generalized linear or 
     hazard model. 
-Depends: R (>= 3.6.0)
+Depends: R (>= 3.5.0)
 License: GPL
 Encoding: UTF-8
 LazyData: true
